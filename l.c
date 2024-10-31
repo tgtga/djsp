@@ -1,49 +1,53 @@
 #define JUGGLER_VERSION "1.0.1"
 
+static const char *build_flag =
+  "<L"
+
 #ifdef DONT_LOG
-# define BF_P1 "N"
+  "N"
 #else
-# define BF_P1 "Y"
+  "Y"
 #endif
 
+  " RE"
+
 #ifdef REALLOC_BEFORE_EVEN
-# define BF_P2_1 "Y"
+  "Y"
 #else
-# define BF_P2_1 "N"
+  "N"
 #endif
 
 #ifdef REALLOC_AFTER_EVEN
-# define BF_P2_2 "Y"
+  "Y"
 #else
-# define BF_P2_2 "N"
+  "N"
 #endif
 
+  "O"
+
 #ifdef REALLOC_BEFORE_ODD
-# define BF_P3_1 "Y"
+  "Y"
 #else
-# define BF_P3_1 "N"
+  "N"
 #endif
 
 #ifdef REALLOC_AFTER_ODD
-# define BF_P3_2 "Y"
+  "Y"
 #else
-# define BF_P3_2 "N"
+  "N"
 #endif
+
+  " S"
 
 #ifdef PRINT_STEPS
-# define BF_P4 "Y"
+  "Y"
 #else
-# define BF_P4 "N"
+  "N"
 #endif
 
-static const char *build_flag = "<L" BF_P1 " RE" BF_P2_1 BF_P2_2 "O" BF_P3_1 BF_P3_2 " S" BF_P4 ">";
+  ">";
 
-#undef BF_P1
-#undef BF_P2_1
-#undef BF_P2_2
-#undef BF_P3_1
-#undef BF_P3_2
-#undef BF_P4
+
 
 #include <stdio.h>
 #include <stdlib.h>
