@@ -1,3 +1,6 @@
+#ifndef INTMATH
+#define INTMATH
+
 #include <stdint.h>
 
 typedef   uint8_t     u8;
@@ -26,3 +29,5 @@ u32 isqrt(
 
   return (u32)a;
 }
+
+#endif
