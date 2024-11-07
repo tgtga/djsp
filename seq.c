@@ -2,18 +2,21 @@
 #define SEQ
 
 #include <gmp.h>
-#include "interface.c"
+#include "logging.c"
 #include "intmath.c"
 #include "defs.c"
 
 int show_steps = 0;
 unsigned long ssol = 0;
-void set_ssol(
-  char *str
-) {
-  ssol = parse_int(str, "-s");
-  show_steps = 1;
-}
+
+int ending = 0;
+unsigned long start_value = 1, end_value = 0;
+
+int
+  realloc_before_even = 0,
+  realloc_after_even  = 0,
+  realloc_before_odd  = 0,
+  realloc_after_odd   = 0;
 
 u16 sequence(
   u64 seed
@@ -25,8 +28,11 @@ u16 sequence(
   while (1) {
     process_int:
 
-    if (show_steps)
-      message("%lu step %u ~2**%u\n", seed, count, bit_length(v_int));
+    if (show_steps) {
+      int bl = bit_length(v_int);
+      if (!ssol || bl >= ssol)
+        message("%lu step %u ~2**%u\n", seed, count, bl);
+    }
 
     if (v_int & 1) {
       if (v_int > 2642245UL) {
@@ -60,11 +66,15 @@ u16 sequence(
 
     process_big:
 
-    if (show_steps)
-      message("%lu step %u ~2**%zu\n", seed, count, mpz_sizeinbase(v_big, 2));
+    if (show_steps) {
+      size_t bl = mpz_sizeinbase(v_big, 2);
+      if (!ssol || bl >= ssol)
+        message("%lu step %u ~2**%zu\n", seed, count, bl);
+    }
 
     if (mpz_odd_p(v_big)) {
-      mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
+      if (realloc_before_odd)
+        mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
 
       mp_size_t limbs = mpz_size(v_big);
 
@@ -111,10 +121,11 @@ u16 sequence(
       mpz_limbs_finish(v_big, (cube_limbs + 1) / 2);
 
 
-
-      mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
+      if (realloc_after_odd)
+        mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
     } else {
-      mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
+      if (realloc_before_even)
+        mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
 
       mp_size_t limbs = mpz_size(v_big);
 
@@ -135,7 +146,8 @@ u16 sequence(
 
 
 
-      mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
+      if (realloc_after_even)
+        mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
     }
 
     ++count;
@@ -151,5 +163,13 @@ u16 sequence(
 
   return count;
 }
+
+/*
+int main(void) {
+  u64 n = 78901;
+  show_steps = 1; ssol = 100000;
+  printf("%lu: %u\n", n, sequence(n));
+}
+*/
 
 #endif

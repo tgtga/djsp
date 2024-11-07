@@ -9,21 +9,7 @@
 #define BANNER(s) "========== " s " =========="
 
 FILE *log_file = NULL;
-static inline void set_log_file(
-  char *path
-) {
-  if ((log_file = fopen(path, "a")) == NULL)
-    DIE("unable to open file `%s': %s\n", path, STRERRNO());
-
-  setvbuf(log_file, NULL, _IOLBF, 0);
-}
-
 char *time_format = "%Y/%m/%d %H:%M:%S";
-static inline void set_time_format(
-  char *format
-) {
-  time_format = format;
-}
 
 void message(
   char *format,

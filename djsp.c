@@ -1,439 +1,173 @@
-/*
-
-Draco's Juggler Sequence Program
-
-relevant OEIS entries: A094683 A007320 A094679 A094698
-
-memory consumption is very high -- numbers with billions of bits are being calculated after all :3
-the worst area is the calculation of floor(n^(3/2))
-the current route is to calculate the cube then take the square root of it
-with L being the number of limbs in `v_big`, the cube requires 6L to calculate
-square = v * v; cube = square * v; free v, square; result = isqrt cube
-the next worst area is storing the cube and then calculating the square root
-taking the most optimized route of
-cube = v ** 3; free v; result = isqrt cube
-still requires 4.5L
-algorithms which calculate the result without an intermediate cube have been attempted
-but I haven't documented them nor have they been anywhere near fast enough
-I'll add it in eventually... (yeah, fucking right)
-
-roadmap, in order of easiest to hardest:
-  1: optimize even sequences
-     from n^2 to (n+1)^2 all even sequences are the same as the first even sequence
-  2: improve argument input, such as allowing any filename for the log
-  3: cache sequences to exit early if an intermediate value has already been computed (watch the memory!!!)
-  4: use disk as memory if a value too large must be computed
-     this is going to be very finnicky and I don't wanna dooooo it >//~//<
-  5: new algorithm for the odd step which uses less than 6L limbs
-
-saved 2022/7/26 02:24
-
-I love Christoph de Babalon holy shitttt
-
-*/
-
-#define JUGGLER_VERSION "1.0.1"
-
 #include <stdio.h>
+#include <getopt.h>
+#include <errno.h>
+#include <string.h>
 #include <stdlib.h>
-#include <stdint.h>
-#include <math.h>
-#include <time.h>
-#include <stdarg.h>
-#include <signal.h>
-#include <gmp.h>
+#include "defs.c"
+#include "logging.c"
+#include "seq.c"
 
 
 
-typedef   uint8_t     u8;
-typedef   uint16_t   u16;
-typedef   uint32_t   u32;
-typedef   uint64_t   u64;
-typedef __uint128_t u128;
-
-
-
-#define BANNER(message) "========== " message " =========="
-
-void print_time(
-  const char *separator,
-  size_t count,
-  ...
+unsigned long parse_int(
+  char *str
 ) {
-  time_t tm = time(NULL);
-  struct tm *p = localtime(&tm);
+  errno = 0;
+  char *end;
+  unsigned long ret = strtoul(str, &end, 0);
 
-  char buffer[4 + 1 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1];
-  strftime(buffer, sizeof(buffer), "%Y/%m/%d %H:%M:%S", p);
+  if (errno)
+    DIE("unable to convert '%s' to an integer: %s\n", str, strerror(errno));
 
-  va_list files;
-  va_start(files, count);
-
-  for (size_t pos = 0; pos < count; ++pos) {
-    FILE *current_file = va_arg(files, FILE *);
-    fprintf(current_file, "%s%s", buffer, separator);
+  if (*end != '\0') {
+    if (end == str)
+      DIE("unable to find an integer in '%s'\n", str);
+    else
+      fprintf(stderr, "trailing junk '%s' in '%s'\n", end, str);
   }
 
-  va_end(files);
+  if (end == str)
+    DIE("empty integer given\n");
+
+  return ret;
 }
 
-#define LOG_PATH "log.dat"
-
-FILE *global_log;
-void print_to_log(
-  FILE *where,
-  const char *format,
-  ...
+FILE *open_file(
+  char *path
 ) {
-# ifdef DONT_LOG
-    va_list args_out;
+  FILE *out = fopen(path, "a");
+  if (out == NULL)
+    DIE("unable to open file '%s': %s\n", path, STRERRNO());
 
-    va_start(args_out, format);
+  setvbuf(out, NULL, _IOLBF, 0);
 
-    print_time(": ", 1, where);
-
-    vfprintf(where, format, args_out);
-
-    va_end(args_out);
-# else
-    va_list args_out, args_log;
-
-    va_start(args_out, format);
-    va_copy(args_log, args_out);
-
-    print_time(": ", 2, where, global_log);
-
-    vfprintf(where, format, args_out);
-    vfprintf(global_log, format, args_log);
-
-    fflush(global_log);
-
-    va_end(args_out);
-    va_end(args_log);
-# endif
+  return out;
 }
 
 
 
-int bit_length(
-  u64 n
-) {
-  return 64 - __builtin_clzl(n);
-}
 
-u32 isqrt(
-  u64 n
-) {
-  u64
-    a = (u64)1 << ((bit_length(n) + 1) >> 1),
-    b = (a + n / a) >> 1;
-
-  while (b < a) {
-    a = b;
-    b = (a + n / a) >> 1;
-  }
-
-  return (u32)a;
-}
-
-
-
-u16 sequence(
-  u64 seed
-) {
-  static mpz_t v_big;
-  static int first_time = 1;
-
-  if (first_time) {
-    mpz_init(v_big);
-    first_time = 0;
-  }
-
-  u64 v_int = seed;
-  u16 count = 0;
-
-  while (1) {
-    process_int:
-
-#   ifdef PRINT_STEPS
-    print_to_log(stderr, "%lu step %u ~2**%u\n", seed, count, bit_length(v_int));
-#   endif
-
-    if (v_int & 1) {
-      if (v_int > 2642245UL) {
-        mpz_ui_pow_ui(v_big, v_int, 3UL);
-        mpz_sqrt(v_big, v_big);
-
-        ++count;
-
-        if ((mpz_odd_p(v_big) && (mpz_cmp_ui(v_big, 2642245UL) > 0)) || !mpz_fits_ulong_p(v_big)) {
-          goto process_big;
-        } else {
-          v_int = mpz_get_ui(v_big);
-
-          goto process_int;
-        }
-      }
-
-      if (v_int == 1)
-        break;
-
-      v_int = isqrt(v_int * v_int * v_int);
-      ++count;
-
-      goto process_int;
-    } else {
-      v_int = isqrt(v_int);
-      ++count;
-
-      goto process_int;
-    }
-
-    process_big:
-
-#   ifdef PRINT_STEPS
-    print_to_log(stderr, "%lu step %u ~2**%zu\n", seed, count, mpz_sizeinbase(v_big, 2));
-#   endif
-
-    if (mpz_odd_p(v_big)) {
-#     ifdef REALLOC_BEFORE_ODD
-      mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
-#     endif
-
-      mp_size_t limbs = mpz_size(v_big);
-
-
-
-      // square = v ** 2
-
-      mpz_t square; mpz_init(square);
-      mp_limb_t *square_mpp = mpz_limbs_write(square, limbs * 2);
-
-      mpn_sqr(square_mpp, mpz_limbs_read(v_big), limbs);
-
-      mpz_limbs_finish(square, limbs * 2);
-
-
-
-      // cube = square * v = v ** 3
-
-      mpz_t cube; mpz_init(cube);
-      mp_limb_t *cube_mpp = mpz_limbs_write(cube, limbs * 3);
-
-      mpn_mul(cube_mpp, mpz_limbs_read(square), limbs * 2, mpz_limbs_read(v_big), limbs);
-
-      mpz_clear(square);
-
-      mpz_limbs_finish(cube, limbs * 3);
-
-
-
-      // v = isqrt(cube) = isqrt(v ** 3) = floor(v ** 3/2)
-
-      const mp_limb_t *cube_mpp_r = mpz_limbs_read(cube);
-      mp_size_t cube_limbs = limbs * 3;
-
-      while (cube_mpp_r[cube_limbs - 1] == 0)
-        --cube_limbs;
-
-      mp_limb_t *v_mpp = mpz_limbs_write(v_big, (cube_limbs + 1) / 2);
-
-      mpn_sqrtrem(v_mpp, NULL, cube_mpp_r, cube_limbs);
-
-      mpz_clear(cube);
-
-      mpz_limbs_finish(v_big, (cube_limbs + 1) / 2);
-
-
-
-#     ifdef REALLOC_AFTER_ODD
-      mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
-#     endif
-    } else {
-#     ifdef REALLOC_BEFORE_EVEN
-      mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
-#     endif
-
-      mp_size_t limbs = mpz_size(v_big);
-
-
-
-      mpz_t root; mpz_init(root);
-      mp_limb_t *root_mpp = mpz_limbs_write(root, (limbs + 1) / 2);
-
-      mpn_sqrtrem(root_mpp, NULL, mpz_limbs_read(v_big), limbs);
-
-      mpz_limbs_finish(root, (limbs + 1) / 2);
-
-
-
-      mpz_clear(v_big);
-
-      *v_big = *root;
-
-
-
-#     ifdef REALLOC_AFTER_EVEN
-      mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
-#     endif
-    }
-
-    ++count;
-
-    if ((mpz_odd_p(v_big) && (mpz_cmp_ui(v_big, 2642245UL) > 0)) || !mpz_fits_ulong_p(v_big)) {
-      goto process_big;
-    } else {
-      v_int = mpz_get_ui(v_big);
-
-      goto process_int;
-    }
-  }
-
-  return count;
-}
-
-
-
-u64 global_last_n = 0;
-void terminate(
-  int exit_code
-) {
-  print_to_log(stderr, BANNER("TERMINATED on %lu") "\n", global_last_n);
-
-  fflush(stdout);
-  fflush(stderr);
-
-# ifndef DONT_LOG
-  fclose(global_log);
-# endif
-
-  exit(exit_code);
-}
-
-void sigint_handler(
-  int dummy
-) {
-  terminate(0);
-}
+static const char *usage = 
+  "usage: %s [short options]\n"
+  "-l --log                    [f = filename]    set the output log file to 'f'\n"
+  "-t --time-format            [t = time format] set the output time format to 't'\n"
+  "-s --steps                  [n = integer]     show intermediate steps for values which exceed 2^'n'\n"
+  "-L --start                  [n = integer]     start running from 'n'\n"
+  "-R --end                    [n = integer]     stop running after 'n'\n"
+  "-1 --oneshot (only with -L)                   only run for one integer\n"
+  "-o --before-odd                               run bignum reallocations before the odd step\n"
+  "-O --after-odd                                run bignum reallocations after the odd step"
+  "-e --before-even                              run bignum reallocations before the even step\n"
+  "-E --after-even                               run bignum reallocations after the even step\n"
+;
 
 int main(
   int argc,
   char **argv
 ) {
-# ifndef DONT_LOG
-  global_log = fopen(LOG_PATH, "a");
-# endif
+  opterr = 0;
 
-  signal(SIGINT, sigint_handler);
+  static struct option long_options[] = {
+    { "log",         required_argument, NULL,                 'l' },
+    { "time-format", required_argument, NULL,                 't' },
+    { "steps",       optional_argument, NULL,                 's' },
+    { "start",       required_argument, NULL,                 'L' },
+    { "end",         required_argument, NULL,                 'R' },
+    { "oneshot",     no_argument,       NULL,                 '1' },
+    { "before-odd",  no_argument,       &realloc_before_odd,  1   },
+    { "after-odd",   no_argument,       &realloc_after_odd,   1   },
+    { "before-even", no_argument,       &realloc_before_even, 1   },
+    { "after-even",  no_argument,       &realloc_after_even,  1   },
+    { 0, 0, 0, 0 }
+  };
 
-  print_to_log(
-    stdout,
-    BANNER(
-      "DJSP VERSION " JUGGLER_VERSION " BUILD FLAG "
+  for (int option_index, c; (c = getopt_long(
+    argc, argv,
+    "l:" "t:" "s::" "L:R:1" "oOeE",
+    long_options, &option_index
+  )) != -1; ) {
+    switch (c) {
+      case 0: {
+        if (long_options[option_index].flag)
+          break;
 
-      "<"
-      "L"
-#     ifdef DONT_LOG
-      "N"
-#     else
-      "Y"
-#     endif
-      " "
+        fprintf(stderr, "hit 0!?\n");
+        abort();
+      } break;
 
-      "R"
-      "E"
-#     ifdef REALLOC_BEFORE_EVEN
-      "Y"
-#     else
-      "N"
-#     endif
-#     ifdef REALLOC_AFTER_EVEN
-      "Y"
-#     else
-      "N"
-#     endif
-      "O"
-#     ifdef REALLOC_BEFORE_ODD
-      "Y"
-#     else
-      "N"
-#     endif
-#     ifdef REALLOC_AFTER_ODD
-      "Y"
-#     else
-      "N"
-#     endif
-      " "
+      case 'l': log_file = open_file(optarg); break;
 
-      "S"
-#     ifdef PRINT_STEPS
-      "Y"
-#     else
-      "N"
-#     endif
-      ">"
+      case 't': time_format = optarg; break;
 
-    ) "\n"
-  );
+      case 's': {
+        if (optarg)
+          ssol = parse_int(optarg);
+        else if (argv[optind] && argv[optind][0] != '-')
+          ssol = parse_int(argv[optind++]);
+        else
+          ssol = 0;
 
-  switch (argc) {
-    case 1: {
-      u64 hwm_index = 0;
-      u16 hwm_value = 0;
-      u8  hwm_count = 0;
+        show_steps = 1;
+      } break;
 
-      for (u64 n = 2; ; ++n) {
-        u16 count = sequence(n);
-
-        if (count > hwm_value) {
-          ++hwm_count;
-          hwm_value = count;
-          hwm_index = n;
-
-          print_to_log(
-            stdout,
-            "A(%u) = %u at %lu ~10**%f\n",
-            hwm_count,
-            hwm_value,
-            hwm_index,
-            log10((double)hwm_index)
-          );
+      case 'L': start_value = parse_int(optarg); break;
+      case 'R': {
+        end_value = parse_int(optarg);
+        ending = 1;
+      } break;
+      case '1': {
+        if (start_value == 1) {
+          fprintf(stderr, "oneshot doesn't make sense without a starting value\n\n");
+          fprintf(stderr, usage, *argv);
+          exit(1);
         }
 
-        if ((n & (((u64)1 << 16) - 1)) == 0)
-          print_to_log(stderr, "on %lu\n", n);
+        end_value = start_value;
+        ending = 1;
+      } break;
 
-        global_last_n = n;
-      }
+      case 'o': realloc_before_odd  = 1; break;
+      case 'O': realloc_after_odd   = 1; break;
+      case 'e': realloc_before_even = 1; break;
+      case 'E': realloc_after_even  = 1; break;
 
-      terminate(0);
-    break; }
+      case '?': {
+        fprintf(stderr, "unrecognized option '%s'\n\n", argv[optind - 1]);
+        fprintf(stderr, usage, *argv);
+        exit(1);
+      } break;
 
-    case 2: {
-      unsigned long examining = strtoul(argv[1], NULL, 0);
-
-      u16 count = sequence((u64)examining);
-
-      print_to_log(
-        stdout,
-        "J(%lu ~10**%f) = %u\n",
-        examining,
-        log10((double)examining),
-        count
-      );
-
-      global_last_n = examining;
-
-      terminate(0);
-    break; }
-
-    default: {
-      printf("usage: %s [to examine]\n", *argv);
-
-      terminate(1);
-    break; }
+      default: DIE("oh nooo! default hit!\n");
+    }
   }
 
-  // should never reach
-  terminate(2);
+  if (optind < argc)
+    fprintf(stderr, "ignoring trailing arguments...\n");
+
+  // now... sanity check!
+
+  message("hello, world!\n");
+
+  if (!show_steps) {
+    printf("NOT showing steps!");
+  } else {
+    printf("showing steps");
+    if (ssol)
+      printf(" above 2^%lu", ssol);
+  }
+  printf("\n");
+
+  printf("running on %lu", start_value);
+  if (ending) {
+    if (end_value != start_value)
+      printf(" -> %lu", end_value);
+  } else
+    printf(" -> oo");
+  printf("\n");
+
+  printf(
+    "%cO%c %cE%c\n",
+    realloc_before_odd ? 'Y' : 'N', realloc_after_odd ? 'Y' : 'N',
+    realloc_before_even ? 'Y' : 'N', realloc_after_even ? 'Y' : 'N'
+  );
 }
