@@ -3,9 +3,9 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-#include "defs.h"
-#include "logging.h"
-#include "seq.h"
+#include "../include/defs.h"
+#include "../include/logging.h"
+#include "../include/seq.h"
 
 
 

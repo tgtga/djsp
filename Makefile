@@ -1,13 +1,26 @@
-objects := intmath.o logging.o seq.o djsp.o
+SRC_DIR := src
+OBJ_DIR := obj
+
+SRC := $(wildcard $(SRC_DIR)/*.c)
+OBJ := $(SRC:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
+EXE := djsp
 
 CC := clang
 CFLAGS += -Wall -Wunreachable-code -O3
 LDFLAGS += -lgmp
 
-djsp: $(objects)
+.PHONY: all clean
 
-$(objects): %.o: %.c
+all: $(EXE)
 
-.PHONY: clean
+$(EXE): $(OBJ)
+	$(CC) -o $@ $(LDFLAGS) $^ $(LOADLIBES) $(LDLIBS)
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR):
+	mkdir -p $@
+
 clean:
-	-rm djsp $(objects)
+	-rm -r obj

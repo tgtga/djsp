@@ -1,5 +1,4 @@
-
-#include "seq.h"
+#include "../include/seq.h"
 
 bool show_steps = false;
 unsigned long ssol = 0;

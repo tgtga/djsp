@@ -1,4 +1,4 @@
-#include "logging.h"
+#include "../include/logging.h"
 
 FILE *log_file = NULL;
 char *time_format = "%Y/%m/%d %H:%M:%S";
