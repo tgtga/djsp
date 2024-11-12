@@ -9,7 +9,7 @@
 #define BANNER(s) "========== " s " =========="
 
 extern FILE *log_file;
-char *time_format;
+extern char *time_format;
 
 void message(char *, ...);
 

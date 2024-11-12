@@ -1,13 +1,12 @@
-objects := intmath.o logging.o seq.o
+objects := intmath.o logging.o seq.o djsp.o
 
 CC := clang
-CFLAGS += -Wall -Wunreachable-code -fPIE -fcommon
+CFLAGS += -Wall -Wunreachable-code -O3
+LDFLAGS += -lgmp
 
-%.o: %.c
-	$(CC) $(CFLAGS) $< -c -o $@
+djsp: $(objects)
 
-djsp: $(objects) djsp.o
-	$(CC) djsp.o -o djsp -lc -lgmp $(objects)
+$(objects): %.o: %.c
 
 .PHONY: clean
 clean:
