@@ -3,7 +3,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-#include "defs.c"
+#include "defs.h"
 #include "logging.c"
 #include "seq.c"
 
@@ -47,7 +47,7 @@ FILE *open_file(
 
 
 
-static const char *usage = 
+static const char *usage =
   "usage: %s [short options]\n"
   "-l --log                    [f = filename]    set the output log file to 'f'\n"
   "-t --time-format            [t = time format] set the output time format to 't'\n"
@@ -55,11 +55,14 @@ static const char *usage =
   "-L --start                  [n = integer]     start running from 'n'\n"
   "-R --end                    [n = integer]     stop running after 'n'\n"
   "-1 --oneshot (only with -L)                   only run for one integer\n"
-  "-o --before-odd                               run bignum reallocations before the odd step\n"
-  "-O --after-odd                                run bignum reallocations after the odd step"
-  "-e --before-even                              run bignum reallocations before the even step\n"
-  "-E --after-even                               run bignum reallocations after the even step\n"
+  "-u --before-up                                run bignum reallocations before the up step\n"
+  "-U --after-up                                 run bignum reallocations after the up step\n"
+  "-d --before-down                              run bignum reallocations before the down step\n"
+  "-D --after-down                               run bignum reallocations after the down step\n"
 ;
+
+// investigate "suckless getopt":
+// https://lobste.rs/s/pd7zaw/arg_h_suckless_alternative_getopt
 
 int main(
   int argc,
@@ -74,16 +77,16 @@ int main(
     { "start",       required_argument, NULL,                 'L' },
     { "end",         required_argument, NULL,                 'R' },
     { "oneshot",     no_argument,       NULL,                 '1' },
-    { "before-odd",  no_argument,       &realloc_before_odd,  1   },
-    { "after-odd",   no_argument,       &realloc_after_odd,   1   },
-    { "before-even", no_argument,       &realloc_before_even, 1   },
-    { "after-even",  no_argument,       &realloc_after_even,  1   },
+    { "before-up",   no_argument,       &realloc_before_up,   1   },
+    { "after-up",    no_argument,       &realloc_after_up,    1   },
+    { "before-down", no_argument,       &realloc_before_down, 1   },
+    { "after-down",  no_argument,       &realloc_after_down,  1   },
     { 0, 0, 0, 0 }
   };
 
   for (int option_index, c; (c = getopt_long(
     argc, argv,
-    "l:" "t:" "s::" "L:R:1" "oOeE",
+    "l:" "t:" "s::" "L:R:1" "dDuU",
     long_options, &option_index
   )) != -1; ) {
     switch (c) {
@@ -126,10 +129,10 @@ int main(
         ending = 1;
       } break;
 
-      case 'o': realloc_before_odd  = 1; break;
-      case 'O': realloc_after_odd   = 1; break;
-      case 'e': realloc_before_even = 1; break;
-      case 'E': realloc_after_even  = 1; break;
+      case 'd': realloc_before_down = 1; break;
+      case 'D': realloc_after_down  = 1; break;
+      case 'u': realloc_before_up   = 1; break;
+      case 'U': realloc_after_up    = 1; break;
 
       case '?': {
         fprintf(stderr, "unrecognized option '%s'\n\n", argv[optind - 1]);
@@ -167,7 +170,7 @@ int main(
 
   printf(
     "%cO%c %cE%c\n",
-    realloc_before_odd ? 'Y' : 'N', realloc_after_odd ? 'Y' : 'N',
-    realloc_before_even ? 'Y' : 'N', realloc_after_even ? 'Y' : 'N'
+    realloc_before_up ? 'Y' : 'N', realloc_after_up ? 'Y' : 'N',
+    realloc_before_down ? 'Y' : 'N', realloc_after_down ? 'Y' : 'N'
   );
 }

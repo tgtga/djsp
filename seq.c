@@ -4,7 +4,7 @@
 #include <gmp.h>
 #include "logging.c"
 #include "intmath.c"
-#include "defs.c"
+#include "defs.h"
 
 int show_steps = 0;
 unsigned long ssol = 0;
@@ -13,10 +13,68 @@ int ending = 0;
 unsigned long start_value = 1, end_value = 0;
 
 int
-  realloc_before_even = 0,
-  realloc_after_even  = 0,
-  realloc_before_odd  = 0,
-  realloc_after_odd   = 0;
+  realloc_before_down = 0,
+  realloc_after_down  = 0,
+  realloc_before_up  = 0,
+  realloc_after_up   = 0;
+
+
+
+void big_three_quarter_power(
+  mpz_t v
+) {
+  const mp_size_t limbs = mpz_size(v);
+
+  
+  
+  // square = v ** 2
+
+  mpz_t square_num; mpz_init(square_num);
+  {
+    mp_limb_t *square_raw = mpz_limbs_write(square_num, limbs * 2);
+
+    mpn_sqr(square_raw, mpz_limbs_read(v), limbs);
+
+    mpz_limbs_finish(square_num, limbs * 2);
+  }
+
+
+
+  // cube = square * v = v ** 3
+
+  mpz_t cube_num; mpz_init(cube_num);
+  {
+    mp_limb_t *cube_raw = mpz_limbs_write(cube_num, limbs * 3);
+
+    mpn_mul(cube_raw, mpz_limbs_read(square_num), limbs * 2, mpz_limbs_read(v), limbs);
+
+    mpz_limbs_finish(cube_num, limbs * 3);
+  }
+
+  mpz_clear(square_num);
+
+
+
+  // v = isqrt(cube) = isqrt(v ** 3) = floor(v ** 3/2)
+
+  {
+    const mp_limb_t *cube_raw_r = mpz_limbs_read(cube_num);
+
+    // mpn_sqrtrem requires the top limb to be nonzero,
+    // so advance 'cube_limbs' down until a nonzero limb is found
+    mp_size_t cube_limbs = limbs * 3;
+    while (cube_raw_r[cube_limbs - 1] == 0)
+      --cube_limbs;
+
+    mp_limb_t *v_mpp = mpz_limbs_write(v, (cube_limbs + 1) / 2);
+
+    mpn_sqrtrem(v_mpp, NULL, cube_raw_r, cube_limbs);
+
+    mpz_limbs_finish(v, (cube_limbs + 1) / 2);
+  }
+
+  mpz_clear(cube_num);
+}
 
 u16 sequence(
   u64 seed
@@ -73,58 +131,15 @@ u16 sequence(
     }
 
     if (mpz_odd_p(v_big)) {
-      if (realloc_before_odd)
+      if (realloc_before_up)
         mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
 
-      mp_size_t limbs = mpz_size(v_big);
+      big_three_quarter_power(v_big);
 
-
-
-      // square = v ** 2
-
-      mpz_t square; mpz_init(square);
-      mp_limb_t *square_mpp = mpz_limbs_write(square, limbs * 2);
-
-      mpn_sqr(square_mpp, mpz_limbs_read(v_big), limbs);
-
-      mpz_limbs_finish(square, limbs * 2);
-
-
-
-      // cube = square * v = v ** 3
-
-      mpz_t cube; mpz_init(cube);
-      mp_limb_t *cube_mpp = mpz_limbs_write(cube, limbs * 3);
-
-      mpn_mul(cube_mpp, mpz_limbs_read(square), limbs * 2, mpz_limbs_read(v_big), limbs);
-
-      mpz_clear(square);
-
-      mpz_limbs_finish(cube, limbs * 3);
-
-
-
-      // v = isqrt(cube) = isqrt(v ** 3) = floor(v ** 3/2)
-
-      const mp_limb_t *cube_mpp_r = mpz_limbs_read(cube);
-      mp_size_t cube_limbs = limbs * 3;
-
-      while (cube_mpp_r[cube_limbs - 1] == 0)
-        --cube_limbs;
-
-      mp_limb_t *v_mpp = mpz_limbs_write(v_big, (cube_limbs + 1) / 2);
-
-      mpn_sqrtrem(v_mpp, NULL, cube_mpp_r, cube_limbs);
-
-      mpz_clear(cube);
-
-      mpz_limbs_finish(v_big, (cube_limbs + 1) / 2);
-
-
-      if (realloc_after_odd)
+      if (realloc_after_up)
         mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
     } else {
-      if (realloc_before_even)
+      if (realloc_before_down)
         mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
 
       mp_size_t limbs = mpz_size(v_big);
@@ -146,7 +161,7 @@ u16 sequence(
 
 
 
-      if (realloc_after_even)
+      if (realloc_after_down)
         mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
     }
 
@@ -164,12 +179,14 @@ u16 sequence(
   return count;
 }
 
+#endif
+
 /*
 int main(void) {
+  printf("%lu\n", GMP_NUMB_BITS);
+
   u64 n = 78901;
   show_steps = 1; ssol = 100000;
   printf("%lu: %u\n", n, sequence(n));
 }
 */
-
-#endif

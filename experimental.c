@@ -3,7 +3,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-#include "defs.c"
+#include "defs.h"
 #include "interface.c"
 #include "seq.c"
 

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdarg.h>
-#include "defs.c"
+#include "defs.h"
 
 #define BANNER(s) "========== " s " =========="
 
