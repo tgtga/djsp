@@ -1,12 +1,4 @@
-#ifndef INTERFACE
-#define INTERFACE
-
-#include <stdio.h>
-#include <time.h>
-#include <stdarg.h>
-#include "defs.h"
-
-#define BANNER(s) "========== " s " =========="
+#include "logging.h"
 
 FILE *log_file = NULL;
 char *time_format = "%Y/%m/%d %H:%M:%S";
@@ -37,5 +29,3 @@ void message(
 
   va_end(args_out);
 }
-
-#endif

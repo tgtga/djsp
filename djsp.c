@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include "defs.h"
-#include "logging.c"
-#include "seq.c"
+#include "logging.h"
+#include "seq.h"
 
 
 
@@ -71,16 +71,16 @@ int main(
   opterr = 0;
 
   static struct option long_options[] = {
-    { "log",         required_argument, NULL,                 'l' },
-    { "time-format", required_argument, NULL,                 't' },
-    { "steps",       optional_argument, NULL,                 's' },
-    { "start",       required_argument, NULL,                 'L' },
-    { "end",         required_argument, NULL,                 'R' },
-    { "oneshot",     no_argument,       NULL,                 '1' },
-    { "before-up",   no_argument,       &realloc_before_up,   1   },
-    { "after-up",    no_argument,       &realloc_after_up,    1   },
-    { "before-down", no_argument,       &realloc_before_down, 1   },
-    { "after-down",  no_argument,       &realloc_after_down,  1   },
+    { "log",         required_argument, NULL,                        'l'  },
+    { "time-format", required_argument, NULL,                        't'  },
+    { "steps",       optional_argument, NULL,                        's'  },
+    { "start",       required_argument, NULL,                        'L'  },
+    { "end",         required_argument, NULL,                        'R'  },
+    { "oneshot",     no_argument,       NULL,                        '1'  },
+    { "before-up",   no_argument,       (int *)&realloc_before_up,   true },
+    { "after-up",    no_argument,       (int *)&realloc_after_up,    true },
+    { "before-down", no_argument,       (int *)&realloc_before_down, true },
+    { "after-down",  no_argument,       (int *)&realloc_after_down,  true },
     { 0, 0, 0, 0 }
   };
 
@@ -129,10 +129,10 @@ int main(
         ending = 1;
       } break;
 
-      case 'd': realloc_before_down = 1; break;
-      case 'D': realloc_after_down  = 1; break;
-      case 'u': realloc_before_up   = 1; break;
-      case 'U': realloc_after_up    = 1; break;
+      case 'd': realloc_before_down = true; break;
+      case 'D': realloc_after_down  = true; break;
+      case 'u': realloc_before_up   = true; break;
+      case 'U': realloc_after_up    = true; break;
 
       case '?': {
         fprintf(stderr, "unrecognized option '%s'\n\n", argv[optind - 1]);

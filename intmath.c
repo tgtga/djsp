@@ -1,13 +1,4 @@
-#ifndef INTMATH
-#define INTMATH
-
-#include <stdint.h>
-
-typedef   uint8_t     u8;
-typedef   uint16_t   u16;
-typedef   uint32_t   u32;
-typedef   uint64_t   u64;
-typedef __uint128_t u128;
+#include "intmath.h"
 
 int bit_length(
   u64 n
@@ -61,6 +52,8 @@ u32 nthroot(
   u64 n,
   u64 b
 ) {
+  assert(b > 1);
+
 # define UPDATE(x) (((b - 1) * (x) + n / ipow((x), b - 1)) / b)
 
   u64
@@ -74,8 +67,6 @@ u32 nthroot(
 
   return (u32)f;
 }
-
-#endif
 
 /*
 #include <stdio.h>

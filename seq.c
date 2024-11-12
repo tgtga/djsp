@@ -1,22 +1,15 @@
-#ifndef SEQ
-#define SEQ
 
-#include <gmp.h>
-#include "logging.c"
-#include "intmath.c"
-#include "defs.h"
+#include "seq.h"
 
-int show_steps = 0;
+bool show_steps = false;
 unsigned long ssol = 0;
 
-int ending = 0;
+bool ending = false;
 unsigned long start_value = 1, end_value = 0;
 
-int
-  realloc_before_down = 0,
-  realloc_after_down  = 0,
-  realloc_before_up  = 0,
-  realloc_after_up   = 0;
+bool
+  realloc_before_down = false, realloc_after_down = false,
+  realloc_before_up   = false,  realloc_after_up  = false;
 
 
 
@@ -178,8 +171,6 @@ u16 sequence(
 
   return count;
 }
-
-#endif
 
 /*
 int main(void) {
