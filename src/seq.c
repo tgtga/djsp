@@ -1,7 +1,7 @@
 #include "../include/seq.h"
 
 bool show_steps = false;
-unsigned long ssol = 0;
+size_t ssol = 0;
 
 bool ending = false;
 unsigned long start_value = 1, end_value = 0;
@@ -12,10 +12,10 @@ bool
 
 
 
-void big_three_quarter_power(
+static void big_three_quarter_power(
   mpz_t v
 ) {
-  const mp_size_t limbs = mpz_size(v);
+  const size_t limbs = mpz_size(v);
 
   
   
@@ -54,7 +54,7 @@ void big_three_quarter_power(
 
     // mpn_sqrtrem requires the top limb to be nonzero,
     // so advance 'cube_limbs' down until a nonzero limb is found
-    mp_size_t cube_limbs = limbs * 3;
+    size_t cube_limbs = limbs * 3;
     while (cube_raw_r[cube_limbs - 1] == 0)
       --cube_limbs;
 
@@ -79,7 +79,7 @@ u16 sequence(
     process_int:
 
     if (show_steps) {
-      int bl = bit_length(v_int);
+      size_t bl = bit_length(v_int);
       if (!ssol || bl >= ssol)
         message("%lu step %u ~2**%u\n", seed, count, bl);
     }
@@ -134,7 +134,7 @@ u16 sequence(
       if (realloc_before_down)
         mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
 
-      mp_size_t limbs = mpz_size(v_big);
+      size_t limbs = mpz_size(v_big);
 
 
 

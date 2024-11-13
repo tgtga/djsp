@@ -9,7 +9,7 @@
 
 
 
-unsigned long parse_int(
+static unsigned long parse_int(
   char *str
 ) {
   errno = 0;
@@ -32,7 +32,7 @@ unsigned long parse_int(
   return ret;
 }
 
-FILE *open_file(
+static FILE *open_file(
   char *path
 ) {
   FILE *out = fopen(path, "a");

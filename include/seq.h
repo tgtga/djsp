@@ -8,7 +8,7 @@
 #include "defs.h"
 
 extern bool show_steps;
-extern unsigned long ssol;
+extern size_t ssol;
 
 extern bool ending;
 extern unsigned long start_value, end_value;
@@ -16,5 +16,7 @@ extern unsigned long start_value, end_value;
 extern bool
   realloc_before_down, realloc_after_down,
   realloc_before_up,   realloc_after_up;
+
+u16 sequence(u64);
 
 #endif
