@@ -13,10 +13,10 @@ LDFLAGS := -lgmp
 
 all: $(EXE)
 
-$(EXE): $(OBJ_DIR)/djsp.o $(EXE).so
+$(EXE): $(OBJ_DIR)/djsp.o lib$(EXE).so
 	$(CC) $(LDFLAGS) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
-$(EXE).so: $(OBJ)
+lib$(EXE).so: $(OBJ)
 	@ar rsv $@ $^
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
@@ -28,6 +28,6 @@ $(OBJ_DIR):
 	mkdir -p $@
 
 clean:
-	-rm -r obj $(EXE).so $(EXE)
+	-rm -r obj lib$(EXE).so $(EXE)
 
 .PHONY: all clean
