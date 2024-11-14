@@ -6,9 +6,9 @@ size_t ssol = 0;
 bool ending = false;
 unsigned long start_value = 1, end_value = 0;
 
-bool
+__attribute__((aligned(4))) bool
   realloc_before_down = false, realloc_after_down = false,
-  realloc_before_up   = false,  realloc_after_up  = false;
+  realloc_before_up   = false, realloc_after_up  = false;
 
 
 

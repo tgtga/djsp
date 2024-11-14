@@ -1,23 +1,34 @@
 SRC_DIR := src
+OBJ_DIR := obj
 
 SRC := $(wildcard $(SRC_DIR)/*.c)
-EXE := djsp
+OBJ := $(SRC:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
 CC := clang
 CFLAGS := \
+	-std=c99 \
   -O3 -march=native -mtune=native \
 	-Weverything -Wno-format-nonliteral -Wno-unreachable-code-break
 LDFLAGS := -lgmp
 
-all: $(EXE)
+all: djsp
 
-$(EXE): djsp.c lib$(EXE).so
-	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS) 
+djsp: $(OBJ_DIR)/djsp.o libdjsp.so
+	$(CC) $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^ -o $@
 
-lib$(EXE).so: $(SRC)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -shared -o $@ $^
+libdjsp.so: $(OBJ)
+	$(CC) -shared $^ -o $@
+
+$(OBJ_DIR)/djsp.o: djsp.c | $(OBJ_DIR)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c $< -o $@
+
+$(OBJ_DIR):
+	mkdir -p $@
 
 clean:
-	-rm -r lib$(EXE).so $(EXE)
+	-rm -r obj libdjsp.so djsp
 
 .PHONY: all clean
