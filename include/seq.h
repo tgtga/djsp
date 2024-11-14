@@ -17,6 +17,6 @@ extern bool
   realloc_before_down, realloc_after_down,
   realloc_before_up,   realloc_after_up;
 
-u16 sequence(u64);
+u64 sequence(u64);
 
 #endif

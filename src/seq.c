@@ -7,12 +7,30 @@ bool ending = false;
 unsigned long start_value = 1, end_value = 0;
 
 __attribute__((aligned(4))) bool
-  realloc_before_down = false, realloc_after_down = false,
-  realloc_before_up   = false, realloc_after_up  = false;
+  realloc_before_up   = false, realloc_after_up   = false,
+  realloc_before_down = false, realloc_after_down = false;
 
 
+static void big_12(
+  mpz_t v
+) {
+  size_t limbs = mpz_size(v);
 
-static void big_three_quarter_power(
+  mpz_t root; mpz_init(root);
+  {
+    mp_limb_t *root_mpp = mpz_limbs_write(root, (limbs + 1) / 2);
+
+    mpn_sqrtrem(root_mpp, NULL, mpz_limbs_read(v), limbs);
+
+    mpz_limbs_finish(root, (limbs + 1) / 2);
+  }
+
+  mpz_clear(v);
+
+  *v = *root;
+}
+
+static void big_32(
   mpz_t v
 ) {
   const size_t limbs = mpz_size(v);
@@ -68,115 +86,78 @@ static void big_three_quarter_power(
   mpz_clear(cube_num);
 }
 
-u16 sequence(
+u64 sequence(
   u64 seed
 ) {
   u64 v_int = seed;
   mpz_t v_big; mpz_init(v_big);
-  u16 count = 0;
+  u64 count = 0;
 
-  while (1) {
-    process_int:
+  goto process_int;
 
-    if (show_steps) {
-      size_t bl = bit_length(v_int);
-      if (!ssol || bl >= ssol)
-        message("%lu step %u ~2**%u\n", seed, count, bl);
-    }
+  process_big: ++count;
 
-    if (v_int & 1) {
-      if (v_int > 2642245UL) {
-        mpz_ui_pow_ui(v_big, v_int, 3UL);
-        mpz_sqrt(v_big, v_big);
+  if (show_steps) {
+    size_t bl = mpz_sizeinbase(v_big, 2);
+    if (!ssol || bl >= ssol)
+      message("%lu step %u ~2**%zu\n", seed, count, bl);
+  }
 
-        ++count;
+  if (mpz_odd_p(v_big)) {
+    if (realloc_before_up)
+      mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
 
-        if ((mpz_odd_p(v_big) && (mpz_cmp_ui(v_big, 2642245UL) > 0)) || !mpz_fits_ulong_p(v_big)) {
-          goto process_big;
-        } else {
-          v_int = mpz_get_ui(v_big);
+    big_32(v_big);
 
-          goto process_int;
-        }
-      }
+    if (realloc_after_up)
+      mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
+  } else {
+    if (realloc_before_down)
+      mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
 
-      if (v_int == 1)
-        break;
+    big_12(v_big);
 
-      v_int = isqrt(v_int * v_int * v_int);
-      ++count;
+    if (realloc_after_down)
+      mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
+  }
+  
+  if (!mpz_fits_ulong_p(v_big))
+    goto process_big;
 
-      goto process_int;
-    } else {
-      v_int = isqrt(v_int);
-      ++count;
+  v_int = mpz_get_ui(v_big);
 
-      goto process_int;
-    }
+  process_int: ++count;
 
-    process_big:
+  if (show_steps) {
+    size_t bl = bit_length(v_int);
+    if (!ssol || bl >= ssol)
+      message("%lu step %u ~2**%u\n", seed, count, bl);
+  }
 
-    if (show_steps) {
-      size_t bl = mpz_sizeinbase(v_big, 2);
-      if (!ssol || bl >= ssol)
-        message("%lu step %u ~2**%zu\n", seed, count, bl);
-    }
-
-    if (mpz_odd_p(v_big)) {
-      if (realloc_before_up)
-        mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
-
-      big_three_quarter_power(v_big);
-
-      if (realloc_after_up)
-        mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
-    } else {
-      if (realloc_before_down)
-        mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
-
-      size_t limbs = mpz_size(v_big);
-
-
-
-      mpz_t root; mpz_init(root);
-      mp_limb_t *root_mpp = mpz_limbs_write(root, (limbs + 1) / 2);
-
-      mpn_sqrtrem(root_mpp, NULL, mpz_limbs_read(v_big), limbs);
-
-      mpz_limbs_finish(root, (limbs + 1) / 2);
-
-
-
-      mpz_clear(v_big);
-
-      *v_big = *root;
-
-
-
-      if (realloc_after_down)
-        mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
-    }
-
-    ++count;
-
-    if ((mpz_odd_p(v_big) && (mpz_cmp_ui(v_big, 2642245UL) > 0)) || !mpz_fits_ulong_p(v_big)) {
+  if (v_int & 1) {
+    if (v_int > 2642245UL) {
+      // v_big = floor(v_int^(3/2))
+      mpz_ui_pow_ui(v_big, v_int, 3UL);
+      mpz_sqrt(v_big, v_big);
+  
       goto process_big;
     } else {
-      v_int = mpz_get_ui(v_big);
-
-      goto process_int;
+      v_int = isqrt(v_int * v_int * v_int);
     }
+  } else {
+    v_int = isqrt(v_int);
   }
+
+  if (v_int > 1)
+    goto process_int;
+
+  mpz_clear(v_big);
 
   return count;
 }
 
-/*
 int main(void) {
-  printf("%lu\n", GMP_NUMB_BITS);
-
   u64 n = 78901;
   show_steps = 1; ssol = 100000;
-  printf("%lu: %u\n", n, sequence(n));
+  printf("%lu: %lu\n", n, sequence(n));
 }
-*/
