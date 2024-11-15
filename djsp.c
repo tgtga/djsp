@@ -48,7 +48,8 @@ static FILE *open_file(
 
 
 static const char *usage =
-  "usage: %s [short options]\n"
+  "usage: %s [options]\n"
+  "-h --help                                     show this help\n"
   "-l --log                    [f = filename]    set the output log file to 'f'\n"
   "-t --time-format            [t = time format] set the output time format to 't'\n"
   "-s --steps                  [n = integer]     show intermediate steps for values which exceed 2^'n'\n"
@@ -71,6 +72,7 @@ int main(
   opterr = 0;
 
   static struct option long_options[] = {
+    { "log",         no_argument,       NULL,                        'h'  },
     { "log",         required_argument, NULL,                        'l'  },
     { "time-format", required_argument, NULL,                        't'  },
     { "steps",       optional_argument, NULL,                        's'  },
@@ -86,7 +88,7 @@ int main(
 
   for (int option_index, c; (c = getopt_long(
     argc, argv,
-    "l:" "t:" "s::" "L:R:1" "dDuU",
+    "h" "l:" "t:" "s::" "L:R:1" "dDuU",
     long_options, &option_index
   )) != -1; ) {
     switch (c) {
@@ -96,6 +98,11 @@ int main(
 
         fprintf(stderr, "hit 0!?\n");
         abort();
+      } break;
+
+      case 'h': {
+        fprintf(stderr, usage, *argv);
+        exit(0);
       } break;
 
       case 'l': log_file = open_file(optarg); break;

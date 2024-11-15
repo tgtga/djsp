@@ -6,14 +6,14 @@ OBJ := $(SRC:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
 CC := clang
 CFLAGS += \
-	-std=c99 \
+  -std=c99 \
   -O3 -march=native -mtune=native \
-	-Weverything -Wno-format-nonliteral -Wno-unreachable-code-break
+  -Weverything -Wno-format-nonliteral -Wno-unreachable-code-break
 LDFLAGS := -lgmp
 
 all: djsp
 
-djsp: $(OBJ_DIR)/djsp.o libdjsp.so
+djsp: libdjsp.so $(OBJ_DIR)/djsp.o
 	$(CC) $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^ -o $@
 
 libdjsp.so: $(OBJ)
