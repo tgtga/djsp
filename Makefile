@@ -5,10 +5,13 @@ SRC := $(wildcard $(SRC_DIR)/*.c)
 OBJ := $(SRC:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
 CC := clang
+
+$(info $(CFLAGS))
 CFLAGS += \
-  -std=c99 \
+	-std=c99 \
   -O3 -march=native -mtune=native \
-  -Weverything -Wno-format-nonliteral -Wno-unreachable-code-break
+  -Wall -Wextra -Wpedantic -Wno-unreachable-code-break
+$(info $(CFLAGS))
 LDFLAGS := -lgmp
 
 all: djsp
