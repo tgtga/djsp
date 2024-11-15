@@ -6,6 +6,17 @@ int bit_length(
   return 64 - __builtin_clzl(n);
 }
 
+int base_length(
+  u64 n,
+  u64 base
+) {
+  int count = 0;
+  for (; n; n /= base, ++count) ;
+  return count;
+}
+
+
+
 u32 isqrt(
   u64 n
 ) {
@@ -26,6 +37,13 @@ u64 ipow(
   u64 x,
   u64 p
 ) {
+  if (p == 0) {
+    assert(x != 0);
+    return 0;
+  }
+  if (p == 1)
+    return x;
+
   u64 r = 1;
 
   while (p > 0) {
@@ -52,12 +70,15 @@ u32 nthroot(
   u64 n,
   u64 b
 ) {
-  assert(b > 1);
+  assert(b != 0);
+
+  if (b == 1)
+    return n;
 
 # define UPDATE(x) (((b - 1) * (x) + n / ipow((x), b - 1)) / b)
 
   u64
-    f = (u64)1 << (bit_length(n) / b),
+    f = (u64)1 << (bit_length(n) / b + 1),
     u = UPDATE(f);
 
   while (u < f) {
@@ -68,10 +89,11 @@ u32 nthroot(
   return (u32)f;
 }
 
-/*
+#if 0
 #include <stdio.h>
 
 int main(void) {
+  /*
   for (u64 b = 2; ; ++b) {
     fprintf(stderr, "on %lu...\n", b);
     for (u64 i = 1; i < ((u64)1 << 24); ++i) {
@@ -81,5 +103,9 @@ int main(void) {
       }
     }
   }
+  */
+
+  u64 n = 10, b = 3;
+  printf("%lu^(1/%lu) = %lu\n", n, b, nthroot(n, b));
 }
-*/
+#endif

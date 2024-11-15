@@ -5,7 +5,7 @@ SRC := $(wildcard $(SRC_DIR)/*.c)
 OBJ := $(SRC:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
 CC := clang
-CFLAGS := \
+CFLAGS += \
 	-std=c99 \
   -O3 -march=native -mtune=native \
 	-Weverything -Wno-format-nonliteral -Wno-unreachable-code-break

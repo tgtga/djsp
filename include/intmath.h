@@ -11,6 +11,7 @@ typedef   uint64_t   u64;
 typedef __uint128_t u128;
 
 int bit_length(u64);
+int base_length(u64, u64);
 
 u32 isqrt(u64);
 

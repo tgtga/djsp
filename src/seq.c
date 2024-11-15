@@ -86,7 +86,7 @@ static void big_32(
   mpz_clear(cube_num);
 }
 
-u64 sequence(
+u64 sequence_2ary(
   u64 seed
 ) {
   u64 v_int = seed;
@@ -156,8 +156,83 @@ u64 sequence(
   return count;
 }
 
+u64 sequence_nary(
+  u64 seed,
+  u64 base
+) {
+  u64 v_int = seed;
+  mpz_t v_big; mpz_init(v_big);
+  u64 count = 0;
+
+  u64 r;
+  const u32 threshold = nthroot((u64)-1, base);
+
+  goto process_int;
+
+  process_big: ++count;
+
+  if (show_steps) {
+    size_t length = mpz_sizeinbase(v_big, base);
+    if (!ssol || length >= ssol)
+      message("%lu step %u ~%lu**%zu\n", seed, count, base, length);
+  }
+
+  r = mpz_fdiv_ui(v_big, base);
+  if (r == base - 1) {
+    if (realloc_before_up)
+      mpz_realloc2(v_big, mpz_sizeinbase(v_big, base));
+
+    mpz_pow_ui(v_big, v_big, base + 1);
+    mpz_root(v_big, v_big, base);
+
+    if (realloc_after_up)
+      mpz_realloc2(v_big, mpz_sizeinbase(v_big, base));
+  } else {
+    if (realloc_before_down)
+      mpz_realloc2(v_big, mpz_sizeinbase(v_big, base));
+
+    mpz_pow_ui(v_big, v_big, r);
+    mpz_root(v_big, v_big, base);
+
+    if (realloc_after_down)
+      mpz_realloc2(v_big, mpz_sizeinbase(v_big, base));
+  }
+  
+  if (!mpz_fits_ulong_p(v_big))
+    goto process_big;
+
+  v_int = mpz_get_ui(v_big);
+
+  process_int: ++count;
+
+  if (show_steps) {
+    size_t length = base_length(v_int, base);
+    if (!ssol || length >= ssol)
+      message("%lu step %u ~%lu**%u\n", seed, count, base, length);
+  }
+
+  r = v_int % base;
+  if (v_int && v_int > threshold) {
+    mpz_ui_pow_ui(v_big, v_int, r == base - 1 ? base + 1 : r);
+    mpz_root(v_big, v_big, base);
+
+    goto process_big;
+  } else {
+    v_int = nthroot(ipow(v_int, r), base);
+  }
+
+  if (v_int > 1)
+    goto process_int;
+
+  mpz_clear(v_big);
+
+  return count;
+}
+
+/*
 int main(void) {
   u64 n = 78901;
-  show_steps = 1; ssol = 100000;
-  printf("%lu: %lu\n", n, sequence(n));
+  show_steps = 1; ssol = 0;
+  printf("%lu: %lu\n", n, sequence_nary(n, 2));
 }
+*/
