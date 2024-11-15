@@ -165,7 +165,8 @@ u64 sequence_nary(
   u64 count = 0;
 
   u64 r;
-  const u32 threshold = nthroot((u64)-1, base);
+  const u32 threshold = nthroot((u64)-1, base + 1);
+  fprintf(stderr, "threshold = %u\n", threshold);
 
   goto process_int;
 
@@ -191,7 +192,7 @@ u64 sequence_nary(
     if (realloc_before_down)
       mpz_realloc2(v_big, mpz_sizeinbase(v_big, base));
 
-    mpz_pow_ui(v_big, v_big, r);
+    mpz_pow_ui(v_big, v_big, r + 1);
     mpz_root(v_big, v_big, base);
 
     if (realloc_after_down)
@@ -212,13 +213,15 @@ u64 sequence_nary(
   }
 
   r = v_int % base;
-  if (v_int && v_int > threshold) {
-    mpz_ui_pow_ui(v_big, v_int, r == base - 1 ? base + 1 : r);
+  if (v_int > threshold && r > 0) {
+    u64 power = (r == base - 1) ? base + 1 : r + 1;
+    mpz_ui_pow_ui(v_big, v_int, power);
     mpz_root(v_big, v_big, base);
 
     goto process_big;
   } else {
-    v_int = nthroot(ipow(v_int, r), base);
+    u64 power = (r == base - 1) ? base + 1 : r + 1;
+    v_int = nthroot(ipow(v_int, power), base);
   }
 
   if (v_int > 1)
@@ -232,7 +235,7 @@ u64 sequence_nary(
 /*
 int main(void) {
   u64 n = 78901;
-  show_steps = 1; ssol = 0;
+  show_steps = 1; ssol = 100000;
   printf("%lu: %lu\n", n, sequence_nary(n, 2));
 }
 */
