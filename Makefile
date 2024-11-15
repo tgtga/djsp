@@ -6,12 +6,12 @@ OBJ := $(SRC:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
 CC := clang
 
-$(info $(CFLAGS))
+# for the future: add 'override' at the beginning
+# if you want to append to a variable set at invocation
 CFLAGS += \
 	-std=c99 \
   -O3 -march=native -mtune=native \
   -Wall -Wextra -Wpedantic -Wno-unreachable-code-break
-$(info $(CFLAGS))
 LDFLAGS := -lgmp
 
 all: djsp
