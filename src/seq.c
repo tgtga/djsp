@@ -164,7 +164,7 @@ u64 sequence_nary(
   mpz_t v_big; mpz_init(v_big);
   u64 count = 0;
 
-  u64 r;
+  u64 past, r;
   const u32 threshold = nthroot((u64)-1, base + 1);
   fprintf(stderr, "threshold = %u\n", threshold);
 
@@ -206,6 +206,8 @@ u64 sequence_nary(
 
   process_int: ++count;
 
+  past = v_int;
+
   if (show_steps) {
     size_t length = base_length(v_int, base);
     if (!ssol || length >= ssol)
@@ -221,21 +223,60 @@ u64 sequence_nary(
     goto process_big;
   } else {
     u64 power = (r == base - 1) ? base + 1 : r + 1;
+    fprintf(stderr,
+      "%lu^%lu = %lu, " "Ans^(1/%lu) = %lu\n",
+      v_int, power, ipow(v_int, power),
+      base, nthroot(ipow(v_int, power), base)
+    );
     v_int = nthroot(ipow(v_int, power), base);
   }
 
-  if (v_int > 1)
+  if (v_int != past)
     goto process_int;
 
   mpz_clear(v_big);
 
-  return count;
+  return count - 1;
 }
 
-/*
+typedef struct {
+  u64 n, base, expected;
+} tester;
+
 int main(void) {
-  u64 n = 78901;
-  show_steps = 1; ssol = 100000;
-  printf("%lu: %lu\n", n, sequence_nary(n, 2));
+  tester tests[] = {
+    {     1,  2,   0 },
+    {    25,  2,  11 },
+    { 78901,  2, 258 },
+    {    13,  3,   5 },
+    {    29,  3,   5 },
+    {    32,  3,   5 },
+    {    44,  3,   7 },
+    {    19,  4,   4 },
+    {    23,  4,   4 },
+    {    44,  9,   5 },
+    {    89, 10,   5 },
+    {    32, 11,   6 }
+  };
+
+  show_steps = 1; ssol = 0;
+
+  size_t count = sizeof(tests) / sizeof(*tests), passed = 0;
+  for (int p = 0; p < sizeof(tests) / sizeof(*tests); ++p) {
+    tester current = tests[p];
+    u64 n = current.n, base = current.base, expected = current.expected;
+
+    u64 result = sequence_nary(n, base);
+
+    printf("juggler_%lu(%lu) = %lu: ", base, n, result);
+    if (result == expected) {
+      printf("PASSED");
+      ++passed;
+    } else {
+      printf("FAILED");
+    }
+    puts("");
+  }
+
+  printf("passed: %zu/%zu\n", passed, count);
 }
-*/
