@@ -35,8 +35,8 @@ static void big_32(
 ) {
   const size_t limbs = mpz_size(v);
 
-  
-  
+
+
   // square = v ** 2
 
   mpz_t square_num; mpz_init(square_num);
@@ -120,7 +120,7 @@ u64 sequence_2ary(
     if (realloc_after_down)
       mpz_realloc2(v_big, mpz_sizeinbase(v_big, 2));
   }
-  
+
   if (!mpz_fits_ulong_p(v_big))
     goto process_big;
 
@@ -139,7 +139,7 @@ u64 sequence_2ary(
       // v_big = floor(v_int^(3/2))
       mpz_ui_pow_ui(v_big, v_int, 3UL);
       mpz_sqrt(v_big, v_big);
-  
+
       goto process_big;
     } else {
       v_int = isqrt(v_int * v_int * v_int);
@@ -164,7 +164,7 @@ u64 sequence_nary(
   mpz_t v_big; mpz_init(v_big);
   u64 count = 0;
 
-  u64 past, r;
+  u64 past = 0, r;
   const u32 threshold = nthroot((u64)-1, base + 1);
   fprintf(stderr, "threshold = %u\n", threshold);
 
@@ -174,8 +174,9 @@ u64 sequence_nary(
 
   if (show_steps) {
     size_t length = mpz_sizeinbase(v_big, base);
-    if (!ssol || length >= ssol)
-      message("%lu step %u ~%lu**%zu\n", seed, count, base, length);
+    if (!ssol || length >= ssol) {
+      message("%lu big step %u ~%lu**%zu\n", seed, count, base, length);
+    }
   }
 
   r = mpz_fdiv_ui(v_big, base);
@@ -198,7 +199,7 @@ u64 sequence_nary(
     if (realloc_after_down)
       mpz_realloc2(v_big, mpz_sizeinbase(v_big, base));
   }
-  
+
   if (!mpz_fits_ulong_p(v_big))
     goto process_big;
 
@@ -211,7 +212,7 @@ u64 sequence_nary(
   if (show_steps) {
     size_t length = base_length(v_int, base);
     if (!ssol || length >= ssol)
-      message("%lu step %u ~%lu**%u\n", seed, count, base, length);
+      message("%lu int step %u ~%lu**%u = %lu\n", seed, count, base, length, v_int);
   }
 
   r = v_int % base;
@@ -237,46 +238,4 @@ u64 sequence_nary(
   mpz_clear(v_big);
 
   return count - 1;
-}
-
-typedef struct {
-  u64 n, base, expected;
-} tester;
-
-int main(void) {
-  tester tests[] = {
-    {     1,  2,   0 },
-    {    25,  2,  11 },
-    { 78901,  2, 258 },
-    {    13,  3,   5 },
-    {    29,  3,   5 },
-    {    32,  3,   5 },
-    {    44,  3,   7 },
-    {    19,  4,   4 },
-    {    23,  4,   4 },
-    {    44,  9,   5 },
-    {    89, 10,   5 },
-    {    32, 11,   6 }
-  };
-
-  show_steps = 1; ssol = 0;
-
-  size_t count = sizeof(tests) / sizeof(*tests), passed = 0;
-  for (int p = 0; p < sizeof(tests) / sizeof(*tests); ++p) {
-    tester current = tests[p];
-    u64 n = current.n, base = current.base, expected = current.expected;
-
-    u64 result = sequence_nary(n, base);
-
-    printf("juggler_%lu(%lu) = %lu: ", base, n, result);
-    if (result == expected) {
-      printf("PASSED");
-      ++passed;
-    } else {
-      printf("FAILED");
-    }
-    puts("");
-  }
-
-  printf("passed: %zu/%zu\n", passed, count);
 }

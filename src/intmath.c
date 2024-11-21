@@ -1,7 +1,5 @@
 #include "../include/intmath.h"
 
-#include <stdio.h>
-
 int bit_length(
   u64 n
 ) {
@@ -57,24 +55,15 @@ u64 ipow(
     x *= x;
     p >>= 1;
   }
-  
+
   return r;
 }
 
-u64 ipow_safe(
+u64 ipow_overflow(
   u64 x,
   u64 p,
   int *overflowed
 ) {
-  // fprintf(stderr, "ipow_safe(%lu, %lu)\n", x, p);
-
-  if (p == 0) {
-    assert(x != 0);
-    return 0;
-  }
-  if (p == 1)
-    return x;
-  
   u64 r = 1;
 
   while (p > 0) {
@@ -84,7 +73,7 @@ u64 ipow_safe(
     p >>= 1;
     *overflowed = *overflowed | (__builtin_umull_overflow(x, x, &x) & !!p);
   }
-  
+
   return r;
 }
 
@@ -96,8 +85,6 @@ u64 ipow_safe(
 // x_i+1 = (b * x_i) / b - (x_i - n / x_i^(b - 1)) / b
 // x_i+1 = (b * x_i - x_i + n / x_i^(b - 1)) / b
 // x_i+1 = ((b - 1) * x_i + n / x_i^(b - 1)) / b
-
-#include <stdio.h>
 
 u64 nthroot_newton(
   u64 n,
@@ -120,48 +107,22 @@ u64 nthroot_newton(
   return f;
 }
 
-u64 nthroot_newton_safe(
-  u64 n,
-  u64 b,
-  int *overflowed
-) {
-# define UPDATE(x) ({ \
-    fprintf(stderr, "%lu -> ", (x)); \
-    u64 _p = ipow_safe((x), b - 1, overflowed); \
-    if (*overflowed || _p == 0) \
-      return 0; \
-    u64 _r = ((b - 1) * (x) + n / _p) / b; \
-    fprintf(stderr, "%lu\n", _r); \
-    _r; \
-  })
-
-  u64
-    f = (u64)1 << (bit_length(n) / b + 1),
-    u = UPDATE(f);
-
-  while (u < f) {
-    f = u;
-    u = UPDATE(f);
-  }
-
-# undef UPDATE
-
-  return f;
-}
-
 u64 nthroot_linear(
   u64 n,
   u64 b
 ) {
   for (u64 i = 1; ; ++i) {
     int overflowed;
-    u64 power = ipow_safe(i, b, &overflowed);
+    u64 power = ipow_overflow(i, b, &overflowed);
 
     if (power >= n)
-      // reached the target
+      // reached the target,
+      // if the power we hit isn't right on the mark then correct the index
       return (power == n) ? i : i - 1;
 
     if (overflowed)
+      // if the power overflowed,
+      // then it must have exceeded n
       return i - 1;
   }
 }

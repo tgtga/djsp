@@ -18,6 +18,6 @@ u32 isqrt(u64);
 u64 nthroot(u64, u64);
 
 u64 ipow(u64, u64);
-u64 ipow_safe(u64, u64, int *);
+u64 ipow_overflow(u64, u64, int *);
 
 #endif
