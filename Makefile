@@ -1,8 +1,18 @@
-SRC_DIR := src
-OBJ_DIR := obj
+OBJ_DIR := src
+EXE_DIR := .
+BUILD_DIR := build
 
-SRC := $(wildcard $(SRC_DIR)/*.c)
-OBJ := $(SRC:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
+EXE_SRC := $(wildcard *.c)
+EXE_OBJ := $(EXE_SRC:%.c=$(BUILD_DIR)/%.o)
+EXE     := $(EXE_SRC:%.c=%)
+OBJ_SRC := $(wildcard $(OBJ_DIR)/*.c)
+OBJ     := $(OBJ_SRC:%.c=$(BUILD_DIR)/%.o) 
+
+# $(info EXE_SRC: $(EXE_SRC))
+# $(info EXE_OBJ: $(EXE_OBJ))
+# $(info EXE:     $(EXE))
+# $(info OBJ_SRC: $(OBJ_SRC))
+# $(info OBJ:     $(OBJ))
 
 CC := clang
 
@@ -11,27 +21,28 @@ CC := clang
 CFLAGS += \
 	-std=c99 \
   -O3 -march=native -mtune=native \
-  -Wall -Wextra -Wpedantic -Wno-unreachable-code-break
+  -Wall -Wextra -Wpedantic
 LDFLAGS := -lgmp
 
-all: djsp
+all: $(EXE)
 
-djsp: libdjsp.so $(OBJ_DIR)/djsp.o
+$(EXE): %: libdjsp.so $(BUILD_DIR)/%.o
 	$(CC) $(LDFLAGS) $(LOADLIBES) $(LDLIBS) $^ -o $@
 
 libdjsp.so: $(OBJ)
 	$(CC) -shared $^ -o $@
 
-$(OBJ_DIR)/djsp.o: djsp.c | $(OBJ_DIR)
+$(BUILD_DIR)/$(OBJ_DIR)/%.o: $(OBJ_DIR)/%.c | $(BUILD_DIR)/$(OBJ_DIR)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c $< -o $@
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)/$(EXE_DIR)
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -fPIC -c $< -o $@
-
-$(OBJ_DIR):
+$(BUILD_DIR)/$(OBJ_DIR) $(BUILD_DIR)/$(EXE_DIR): $(BUILD_DIR)
+	mkdir -p $@
+$(BUILD_DIR):
 	mkdir -p $@
 
 clean:
-	-rm -r obj libdjsp.so djsp
+	-rm -r $(BUILD_DIR) libdjsp.so $(EXE)
 
 .PHONY: all clean
