@@ -11,6 +11,7 @@ __attribute__((aligned(4))) bool
   realloc_before_down = false, realloc_after_down = false;
 
 
+
 static void big_12(
   mpz_t v
 ) {
@@ -129,7 +130,7 @@ u64 sequence_2ary(
   process_int: ++count;
 
   if (show_steps) {
-    size_t bl = bit_length(v_int);
+    int bl = bit_length(v_int);
     if (!ssol || bl >= ssol)
       message("%lu step %u ~2**%u\n", seed, count, bl);
   }
@@ -210,9 +211,9 @@ u64 sequence_nary(
   past = v_int;
 
   if (show_steps) {
-    size_t length = base_length(v_int, base);
+    int length = base_length(v_int, base);
     if (!ssol || length >= ssol)
-      message("%lu int step %u ~%lu**%u = %lu\n", seed, count, base, length, v_int);
+      message("%lu int step %u ~%lu**%u\n", seed, count, base, length);
   }
 
   r = v_int % base;
@@ -224,11 +225,6 @@ u64 sequence_nary(
     goto process_big;
   } else {
     u64 power = (r == base - 1) ? base + 1 : r + 1;
-    fprintf(stderr,
-      "%lu^%lu = %lu, " "Ans^(1/%lu) = %lu\n",
-      v_int, power, ipow(v_int, power),
-      base, nthroot(ipow(v_int, power), base)
-    );
     v_int = nthroot(ipow(v_int, power), base);
   }
 

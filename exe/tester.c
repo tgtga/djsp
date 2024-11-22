@@ -1,4 +1,6 @@
-#include "include/seq.h"
+#include "../include/seq.h"
+
+
 
 typedef struct {
   u64 n, base, expected;
@@ -20,7 +22,7 @@ int main(void) {
     {    32, 11,   6 }
   };
 
-  show_steps = 1; ssol = 0;
+  show_steps = 0;
 
   size_t count = sizeof(tests) / sizeof(*tests), passed = 0;
   for (int p = 0; p < sizeof(tests) / sizeof(*tests); ++p) {
