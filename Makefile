@@ -1,5 +1,5 @@
-OBJ_DIR := src
-EXE_DIR := exe
+  OBJ_DIR := src
+  EXE_DIR := exe
 BUILD_DIR := build
 
 EXE_SRC := $(wildcard $(EXE_DIR)/*.c)
@@ -26,7 +26,26 @@ LIBRARY   := libdjsp.so
 OBJ_FLAGS := -fPIC
 endif
 
+
+
 all: $(EXE)
+
+install: all
+	@# mkdir -p /usr/local/include/djsp
+	@# cp include/* /usr/local/include/djsp
+	@# cp $(BUILD_DIR)/$(LIBRARY) /usr/local/lib
+	@# cp djsp /usr/local/bin
+
+	install -D -t /usr/local/include/djsp include/*
+	install -D -t /usr/local/lib          $(BUILD_DIR)/$(LIBRARY)
+	install -D -t /usr/local/bin          djsp
+
+clean:
+	-rm -rf $(BUILD_DIR) libdjsp.so libdjsp.a $(EXE)
+
+.PHONY: all clean install
+
+
 
 $(EXE): %: $(BUILD_DIR)/$(EXE_DIR)/%.o $(BUILD_DIR)/$(LIBRARY)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
@@ -43,8 +62,3 @@ $(BUILD_DIR)/$(EXE_DIR)/%.o: $(EXE_DIR)/%.c | $(BUILD_DIR)/$(EXE_DIR)
 
 $(BUILD_DIR)/$(OBJ_DIR) $(BUILD_DIR)/$(EXE_DIR):
 	mkdir -p $@
-
-clean:
-	-rm -rf $(BUILD_DIR) libdjsp.so libdjsp.a $(EXE)
-
-.PHONY: all clean static
