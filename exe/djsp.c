@@ -1,15 +1,30 @@
+#define _GNU_SOURCE 1
+
 #include <stdio.h>
 #include <getopt.h>
 #include <errno.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+
 #include "../include/defs.h"
 #include "../include/logging.h"
 #include "../include/seq.h"
 
 
 
-static unsigned long parse_int(
+FILE *open_file(
+  char *path
+) {
+  FILE *out = fopen(path, "a");
+  if (out == NULL)
+    DIE("unable to open file '%s': %s\n", path, STRERRNO());
+
+  setvbuf(out, NULL, _IOLBF, 0);
+
+  return out;
+}
+
+unsigned long parse_int(
   char *str
 ) {
   errno = 0;
@@ -23,7 +38,7 @@ static unsigned long parse_int(
     if (end == str)
       DIE("unable to find an integer in '%s'\n", str);
     else
-      fprintf(stderr, "trailing junk '%s' in '%s'\n", end, str);
+      fprintf(stderr, "trailing junk '%s' in integer '%s'\n", end, str);
   }
 
   if (end == str)
@@ -32,35 +47,99 @@ static unsigned long parse_int(
   return ret;
 }
 
-static FILE *open_file(
-  char *path
+#ifdef POLYFILL_STRCHRNUL
+const char *strchrnul(
+  const char *s,
+  int f
 ) {
-  FILE *out = fopen(path, "a");
-  if (out == NULL)
-    DIE("unable to open file '%s': %s\n", path, STRERRNO());
+  while (*s && *s != f)
+    ++s;
+  return s;
+}
+#endif
 
-  setvbuf(out, NULL, _IOLBF, 0);
+struct range {
+  unsigned long start, end, step;
+  bool endless;
+};
 
-  return out;
+struct range parse_range(
+  const char *str
+) {
+  static const char sep = ',';
+
+  struct range range = {
+    .start = 1, .end = 0,
+    .step = 1,
+    .endless = true
+  };
+
+# define ITERATE(body) do {                 \
+    const char *adv = strchrnul(str, sep);  \
+    size_t len = adv - str;                 \
+                                            \
+    char buf[len + 1];                      \
+    memcpy(buf, str, len); buf[len] = '\0'; \
+                                            \
+    body;                                   \
+                                            \
+    if (*adv == '\0') goto done;            \
+    str = adv + 1;                          \
+  } while (0)
+  
+  ITERATE({
+    if (len > 0)
+      range.start = parse_int(buf);
+  });
+
+  ITERATE({
+    if (len > 0) {
+      range.end = parse_int(buf);
+      range.endless = false;
+    }
+  });
+
+  ITERATE({
+    if (len == 0)
+      DIE("step length cannot be empty\n");
+
+    range.step = parse_int(buf);
+
+    if (range.step == 0)
+      DIE("step length cannot be zero\n");
+    if (range.step > range.end - range.start && !range.endless)
+      fprintf(stderr,
+        "the step of %lu is greater than the range of values given (%lu to %lu),\n"
+        "so no computations will actually be performed\n",
+        range.step, range.start, range.end
+      );
+  });
+
+# undef ITERATE
+
+  if (*str != '\0')
+    DIE("trailing junk '%s' in range\n", str);
+
+  done: ;
+  return range;
 }
 
 
 
-
-static const char *usage =
-  "usage: %s [options]\n"
-  "-h --help                                     show this help\n"
-  "-l --log                    [f = filename]    set the output log file to 'f'\n"
-  "-t --time-format            [t = time format] set the output time format to 't'\n"
-  "-s --steps                  [n = integer]     show intermediate steps for values which exceed 2^'n'\n"
-  "-L --start                  [n = integer]     start running from 'n'\n"
-  "-R --end                    [n = integer]     stop running after 'n'\n"
-  "-1 --oneshot (only with -L)                   only run for one integer\n"
-  "-u --before-up                                run bignum reallocations before the up step\n"
-  "-U --after-up                                 run bignum reallocations after the up step\n"
-  "-d --before-down                              run bignum reallocations before the down step\n"
-  "-D --after-down                               run bignum reallocations after the down step\n"
-;
+static const char *usage = "usage: %s [options] [range]\n\
+-h --help          show this help\n\
+\n\
+-l --log           log all information to a file\n\
+-t --time-format   print times with this date format\n\
+                   (default %%Y/%%m/%%d %%H:%%M:%%S)\n\
+-s --steps         show intermediate steps for values\n\
+                   whose base-2 logarithm exceeds this value\n\
+\n\
+-u --before-up     run bignum reallocations before the up step\n\
+-U --after-up      run bignum reallocations after the up step\n\
+-d --before-down   run bignum reallocations before the down step\n\
+-D --after-down    run bignum reallocations after the down step\n\
+";
 
 // investigate "suckless getopt":
 // https://lobste.rs/s/pd7zaw/arg_h_suckless_alternative_getopt
@@ -69,6 +148,8 @@ int main(
   int argc,
   char **argv
 ) {
+  u64 base = 0;
+
   opterr = 0;
 
   static struct option long_options[] = {
@@ -76,9 +157,6 @@ int main(
     { "log",         required_argument, NULL,                        'l'  },
     { "time-format", required_argument, NULL,                        't'  },
     { "steps",       optional_argument, NULL,                        's'  },
-    { "start",       required_argument, NULL,                        'L'  },
-    { "end",         required_argument, NULL,                        'R'  },
-    { "oneshot",     no_argument,       NULL,                        '1'  },
     { "before-up",   no_argument,       (int *)&realloc_before_up,   true },
     { "after-up",    no_argument,       (int *)&realloc_after_up,    true },
     { "before-down", no_argument,       (int *)&realloc_before_down, true },
@@ -88,7 +166,7 @@ int main(
 
   for (int option_index, c; (c = getopt_long(
     argc, argv,
-    "h" "l:" "t:" "s::" "L:R:1" "dDuU",
+    "h" "l:" "t:" "s::" "dDuU",
     long_options, &option_index
   )) != -1; ) {
     switch (c) {
@@ -120,22 +198,6 @@ int main(
         show_steps = 1;
       } break;
 
-      case 'L': start_value = parse_int(optarg); break;
-      case 'R': {
-        end_value = parse_int(optarg);
-        ending = 1;
-      } break;
-      case '1': {
-        if (start_value == 1) {
-          fprintf(stderr, "oneshot doesn't make sense without a starting value\n\n");
-          fprintf(stderr, usage, *argv);
-          exit(1);
-        }
-
-        end_value = start_value;
-        ending = 1;
-      } break;
-
       case 'd': realloc_before_down = true; break;
       case 'D': realloc_after_down  = true; break;
       case 'u': realloc_before_up   = true; break;
@@ -149,6 +211,16 @@ int main(
 
       default: DIE("oh nooo! default hit!\n");
     }
+  }
+
+  unsigned long step_value = 1;
+  if (optind < argc) {
+    struct range r = parse_range(argv[optind]);
+    start_value = r.start;
+    end_value = r.end;
+    ending = !r.endless;
+    step_value = r.step;
+    ++optind;
   }
 
   if (optind < argc)
@@ -173,6 +245,8 @@ int main(
       printf(" -> %lu", end_value);
   } else
     printf(" -> oo");
+  if (step_value > 1)
+    printf(", step of %lu", step_value);
   printf("\n");
 
   printf(
