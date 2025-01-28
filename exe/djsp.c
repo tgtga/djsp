@@ -229,37 +229,34 @@ int main(
   if (optind < argc)
     fprintf(stderr, "ignoring trailing arguments...\n");
 
-  // now... sanity check!
-
-  message("hello, world!\n");
+  // message("hello, world!\n");
 
   if (!show_steps) {
-    printf("NOT showing steps!");
+    fprintf(stderr, "NOT showing steps!");
   } else {
-    printf("showing steps");
+    fprintf(stderr, "showing steps");
     if (ssol)
-      printf(" above 2^%lu", ssol);
+      fprintf(stderr, " above 2^%lu", ssol);
   }
-  printf("\n");
+  fprintf(stderr, "\n");
 
-  printf("running on %lu", start);
+  fprintf(stderr, "running on %lu", start);
   if (endless)
-    printf(" -> oo");
+    fprintf(stderr, " -> oo");
   else
     if (end != start)
-      printf(" -> %lu", end);
+      fprintf(stderr, " -> %lu", end);
   if (step > 1)
-    printf(", step of %lu", step);
+    fprintf(stderr, ", step of %lu", step);
   if (base)
-    printf(", base %lu", base);
-  printf("\n");
+    fprintf(stderr, ", base %lu", base);
+  fprintf(stderr, "\n");
 
-  printf(
+  fprintf(stderr, 
     "%cO%c %cE%c\n",
     realloc_before_up ? 'Y' : 'N', realloc_after_up ? 'Y' : 'N',
     realloc_before_down ? 'Y' : 'N', realloc_after_down ? 'Y' : 'N'
   );
-
   
   if (start == end) {
     u64 where = start;
