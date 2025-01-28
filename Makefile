@@ -29,6 +29,7 @@ endif
 
 
 all: $(EXE)
+	perl tester.pl
 
 install: all
 	@# mkdir -p /usr/local/include/djsp

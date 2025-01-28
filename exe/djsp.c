@@ -8,7 +8,8 @@
 
 #include "../include/defs.h"
 #include "../include/logging.h"
-#include "../include/seq.h"
+#include "../include/oneshot.h"
+#include "../include/sequence.h"
 
 
 
@@ -58,21 +59,20 @@ const char *strchrnul(
 }
 #endif
 
-struct range {
-  unsigned long start, end, step;
-  bool endless;
-};
-
-struct range parse_range(
-  const char *str
+void parse_range(
+  const char *str,
+  unsigned long *start_out, unsigned long *end_out,
+  unsigned long *step_out,
+  bool *endless_out
 ) {
+  // FIXME: recognize bare number as oneshot range
+
   static const char sep = ',';
 
-  struct range range = {
-    .start = 1, .end = 0,
-    .step = 1,
-    .endless = true
-  };
+  unsigned long
+    start = 1, end = 0,
+    step = 1;
+  bool endless = true;
 
 # define ITERATE(body) do {                 \
     const char *adv = strchrnul(str, sep);  \
@@ -89,13 +89,13 @@ struct range parse_range(
   
   ITERATE({
     if (len > 0)
-      range.start = parse_int(buf);
+      start = parse_int(buf);
   });
 
   ITERATE({
     if (len > 0) {
-      range.end = parse_int(buf);
-      range.endless = false;
+      end = parse_int(buf);
+      endless = false;
     }
   });
 
@@ -103,15 +103,15 @@ struct range parse_range(
     if (len == 0)
       DIE("step length cannot be empty\n");
 
-    range.step = parse_int(buf);
+    step = parse_int(buf);
 
-    if (range.step == 0)
+    if (step == 0)
       DIE("step length cannot be zero\n");
-    if (range.step > range.end - range.start && !range.endless)
+    if (step > end - start && !endless)
       fprintf(stderr,
         "the step of %lu is greater than the range of values given (%lu to %lu),\n"
         "so no computations will actually be performed\n",
-        range.step, range.start, range.end
+        step, start, end
       );
   });
 
@@ -121,12 +121,15 @@ struct range parse_range(
     DIE("trailing junk '%s' in range\n", str);
 
   done: ;
-  return range;
+  *start_out   = start;
+  *end_out     = end;
+  *step_out    = step;
+  *endless_out = endless;
 }
 
 
 
-static const char *usage = "usage: %s [options] [range]\n\
+static const char *usage = "usage: %s [options] [range] [base]\n\
 -h --help          show this help\n\
 \n\
 -l --log           log all information to a file\n\
@@ -148,8 +151,6 @@ int main(
   int argc,
   char **argv
 ) {
-  u64 base = 0;
-
   opterr = 0;
 
   static struct option long_options[] = {
@@ -213,13 +214,15 @@ int main(
     }
   }
 
-  unsigned long step_value = 1;
+  unsigned long start = 1, end = 0, step = 1; bool endless = true;
   if (optind < argc) {
-    struct range r = parse_range(argv[optind]);
-    start_value = r.start;
-    end_value = r.end;
-    ending = !r.endless;
-    step_value = r.step;
+    parse_range(argv[optind], &start, &end, &step, &endless);
+    ++optind;
+  }
+
+  u64 base = 0;
+  if (optind < argc) {
+    base = parse_int(argv[optind]);
     ++optind;
   }
 
@@ -239,14 +242,16 @@ int main(
   }
   printf("\n");
 
-  printf("running on %lu", start_value);
-  if (ending) {
-    if (end_value != start_value)
-      printf(" -> %lu", end_value);
-  } else
+  printf("running on %lu", start);
+  if (endless)
     printf(" -> oo");
-  if (step_value > 1)
-    printf(", step of %lu", step_value);
+  else
+    if (end != start)
+      printf(" -> %lu", end);
+  if (step > 1)
+    printf(", step of %lu", step);
+  if (base)
+    printf(", base %lu", base);
   printf("\n");
 
   printf(
@@ -254,4 +259,20 @@ int main(
     realloc_before_up ? 'Y' : 'N', realloc_after_up ? 'Y' : 'N',
     realloc_before_down ? 'Y' : 'N', realloc_after_down ? 'Y' : 'N'
   );
+
+  
+  if (start == end) {
+    u64 where = start;
+
+    printf("L");
+    if (base)
+      printf("_%lu", base);
+    printf("(%lu) = ", where);
+    fflush(stdout);
+
+    u64 r = base ? oneshot_n(where, base, NULL) : oneshot_2(where, NULL);
+    printf("%lu\n", r);
+  } else {
+    sequence(base, start, end, step, endless);
+  }
 }
