@@ -6,7 +6,7 @@ size_t ssol = 0;
 #define PRINT_STEP(base, lg) do {                               \
   if (show_steps) {                                             \
     size_t l = lg;                                              \
-    if (!ssol || l >= ssol)                                     \
+    if (ssol == 0 || l >= ssol)                                 \
       message("%lu step %u ~%lu**%zu\n", seed, count, base, l); \
   }                                                             \
 } while (0)
@@ -17,20 +17,24 @@ size_t ssol = 0;
 
 u64 oneshot_2(
   u64 seed,
-  u64 (*memo)(u64, u64, mpz_t)
+  memo_callback memo
 ) {
   if (seed == 1)
     return 0;
 
   u64 v_int = seed;
   mpz_t v_big; mpz_init(v_big);
-  u64 count = 0;
+  u64 count = 0, additional;
 
   goto process_int;
 
   process_big: ++count;
 
   PRINT_STEP_BIG(2);
+
+  if (memo)
+    if ((additional = memo(count, 0, v_big)))
+      return (count - 1) + additional;
 
   big_2(v_big);
 
@@ -42,6 +46,10 @@ u64 oneshot_2(
   process_int: ++count;
 
   PRINT_STEP_INT_2();
+
+  if (memo)
+    if ((additional = memo(count, v_int, NULL)))
+      return (count - 1) + additional;
 
   if (v_int & 1) {
     if (v_int > 2642245UL) {
@@ -68,7 +76,7 @@ u64 oneshot_2(
 u64 oneshot_n(
   u64 seed,
   u64 base,
-  u64 (*memo)(u64, u64, mpz_t)
+  memo_callback memo
 ) {
   u64 v_int = seed;
   mpz_t v_big; mpz_init(v_big);
@@ -76,7 +84,7 @@ u64 oneshot_n(
 
   u64 past = 0;
   const u32 threshold = nthroot((u64)-1, base + 1);
-  fprintf(stderr, "threshold = %u\n", threshold);
+  // fprintf(stderr, "threshold = %u\n", threshold);
 
   goto process_int;
 
@@ -85,7 +93,7 @@ u64 oneshot_n(
   PRINT_STEP_BIG(base);
 
   if (memo)
-    if ((additional = memo(base, 0, v_big)))
+    if ((additional = memo(count, 0, v_big)))
       return (count - 1) + additional;
 
   big_n(v_big, base);
@@ -102,7 +110,7 @@ u64 oneshot_n(
   PRINT_STEP_INT_N(base);
 
   if (memo)
-    if ((additional = memo(base, v_int, NULL)))
+    if ((additional = memo(count, v_int, NULL)))
       return (count - 1) + additional;
 
   u64 r = v_int % base;

@@ -29,7 +29,8 @@ endif
 
 
 all: $(EXE)
-	perl tester.pl
+	@# perl tester.pl
+	rspec tester.rb
 
 install: all
 	@# mkdir -p /usr/local/include/djsp
@@ -54,7 +55,7 @@ $(EXE): %: $(BUILD_DIR)/$(EXE_DIR)/%.o $(BUILD_DIR)/$(LIBRARY)
 $(BUILD_DIR)/libdjsp.a: $(OBJ)
 	ar rcs $@ $?
 $(BUILD_DIR)/libdjsp.so: $(OBJ)
-	$(CC) -shared -o $@ $^
+	$(CC) -shared -lgmp -o $@ $^
 
 $(BUILD_DIR)/$(OBJ_DIR)/%.o: $(OBJ_DIR)/%.c | $(BUILD_DIR)/$(OBJ_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(OBJ_FLAGS) -c -o $@ $<

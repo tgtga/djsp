@@ -17,7 +17,7 @@ FILE *open_file(
   char *path
 ) {
   FILE *out = fopen(path, "a");
-  if (out == NULL)
+  if (!out)
     DIE("unable to open file '%s': %s\n", path, STRERRNO());
 
   setvbuf(out, NULL, _IOLBF, 0);
@@ -184,7 +184,7 @@ int main(
         exit(0);
       } break;
 
-      case 'l': log_file = open_file(optarg); break;
+      // case 'l': log_file = open_file(optarg); break;
 
       case 't': time_format = optarg; break;
 
@@ -270,6 +270,6 @@ int main(
     u64 r = base ? oneshot_n(where, base, NULL) : oneshot_2(where, NULL);
     printf("%lu\n", r);
   } else {
-    sequence(base, start, end, step, endless);
+    // sequence(base, start, end, step, endless);
   }
 }
