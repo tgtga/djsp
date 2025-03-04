@@ -1,11 +1,13 @@
 #ifndef INTERFACE
 #define INTERFACE
 
+#include "defs.h"
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <stdarg.h>
-#include <unistd.h>
-#include "defs.h"
+#include <time.h>
 
 #define BANNER(s) "========== " s " =========="
 

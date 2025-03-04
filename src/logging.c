@@ -1,7 +1,6 @@
 #include "../include/logging.h"
 
 FILE *log_file = NULL;
-char *time_format = "%Y-%m-%dT%H:%M:%S.%L%z";
 
 /*
 void set_up_log(int fd) {
@@ -29,24 +28,32 @@ void set_up_log(const char *path) {
 }
 
 void message(char *format, ...) {
-  time_t tm = time(NULL);
-  struct tm *p = localtime(&tm);
+  // https://stackoverflow.com/a/77826253
 
-  char time_string[65];
-  strftime(time_string, sizeof(time_string), time_format, p);
+  struct timespec tp;
+  clock_gettime(CLOCK_REALTIME, &tp);
+  struct tm *local = localtime(&tp.tv_sec);
 
+  char ts[sizeof("9999-12-31T23:59:59.999+00:00")]; // 29 chars + '\0'
+  size_t size = sizeof(ts);
+  int off = 0;
+
+  off = strftime(ts, size, "%FT%T", local); // same as "%Y-%m-%dT%H:%M:%S" 
+  off += snprintf(ts + off, size - off, ".%03ld", tp.tv_nsec / 1000000);
+  off += strftime(ts + off, size - off, "%z", local);
+  
   va_list args_out; va_start(args_out, format);
 
   if (log_file) {
     va_list args_log; va_copy(args_log, args_out);
 
-    fprintf(log_file, "%s: ", time_string);
+    fprintf(log_file, "%s: ", ts);
     vfprintf(log_file, format, args_log);
 
     va_end(args_log);
   }
 
-  printf("%s: ", time_string);
+  printf("%s: ", ts);
   vprintf(format, args_out);
 
   va_end(args_out);

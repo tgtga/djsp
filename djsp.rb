@@ -7,10 +7,7 @@ module DJSP
     ffi_lib "./build/libdjsp.so"
 
     # logging
-
-    attach_variable :time_format, :string
     
-    # attach_function :set_up_log, [:int], :void
     attach_function :set_up_log, [:string], :void
     attach_function :message, [:string, :varargs], :void
 
@@ -130,8 +127,6 @@ if $0 == __FILE__
     -h --help          show this help
 
     -l --log           log all information to a file
-    -t --time-format   print times with this date format
-                       (default %Y-%m-%dT%H:%M:%S.%L%z (ISO 8601))
     -s --steps         show intermediate steps for values
                        whose base-2 logarithm exceeds this value
     
@@ -150,9 +145,8 @@ if $0 == __FILE__
     ) {|log| DJSP.log = log }
 
     parser.on(
-      "-tTIME-FORMAT", "--time-format=TIME-FORMAT",
-      "output timestamps with this format (default ISO 8601 format)"
-    ) {|time_format| DJSP.time_format = time_format }
+      
+    )
 
     parser.on(
       "-h", "--help",

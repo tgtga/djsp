@@ -151,6 +151,7 @@ int main(
   int argc,
   char **argv
 ) {
+# if 0
   opterr = 0;
 
   static struct option long_options[] = {
@@ -272,4 +273,5 @@ int main(
   } else {
     // sequence(base, start, end, step, endless);
   }
+# endif
 }
