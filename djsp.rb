@@ -1,3 +1,5 @@
+#!/usr/bin/env ruby
+
 require "ffi"
 
 module DJSP
@@ -5,6 +7,13 @@ module DJSP
     extend FFI::Library
     ffi_lib "c"
     ffi_lib "./build/libdjsp.so"
+
+    # step
+
+    [
+      :realloc_before_up,   :realloc_after_up,
+      :realloc_before_down, :realloc_after_down
+    ].each {|name| attach_variable name, :bool }
 
     # logging
     
@@ -32,19 +41,15 @@ module DJSP
   VALID_SEQUENCE_OPTIMIZATIONS = [:root]
 
   class << self
-    # def show_steps; C::show_steps; end
-    # def show_steps= x
-    #   raise ArgumentError unless x == true || x == false
-    #   C::show_steps = x
-    # end
-    # 
-    # def ssol; C::ssol; end
-    # def ssol= x
-    #   raise ArgumentError unless x.is_a? Integer
-    #   C::ssol = x
-    # end
-    # alias show_steps_over_log ssol
-    # alias show_steps_over_log= ssol=
+    def ssol; C::ssol; end
+    def ssol= x
+      raise ArgumentError unless x.is_a? Integer
+
+      C::ssol = x
+      C::show_steps = true
+    end
+    alias show_steps_over_log ssol
+    alias show_steps_over_log= ssol=
 
     @log = nil
     def log; @log; end
@@ -73,9 +78,6 @@ module DJSP
       C::set_up_log path
     end
 
-    def time_format; C::time_format; end
-    def time_format= time_format; C::time_format = time_format; end
-
     def oneshot seed, base: nil, &memo
       case base
       when nil then C::oneshot_2       seed, memo
@@ -83,7 +85,7 @@ module DJSP
       end
     end
 
-    def sequence range = (1..), base: 0, optimize: [], &hwm
+    def sequence range = (1..), base: nil, optimize: [], &hwm
       unless range.is_a? Enumerator::ArithmeticSequence
         range = range.step
         raise TypeError, "`range` must be or be able to be converted to an Enumerator::ArithmeticSequence" \
@@ -94,10 +96,12 @@ module DJSP
       (right, endless) = range.end ? [range.end, false] : [0, true]
       step = range.step
 
+      base ||= 0
+
       optimize = [optimize] if optimize.is_a?(Symbol) || optimize.is_a?(String)
       optimize = optimize.map &:to_sym
       raise ArgumentError, "the only valid optimizations are: #{VALID_SEQUENCE_OPTIMIZATIONS.join ?,}" \
-        unless optimize.-(VALID_SEQUENCE_OPTIMIZATIONS).empty?
+        unless (optimize - VALID_SEQUENCE_OPTIMIZATIONS).empty?
 
       unless block_given?
         out = {}
@@ -119,38 +123,70 @@ module DJSP
 end
 
 if $0 == __FILE__
-  require 'optparse'
+  require "optparse"
 
-  USAGE = <<~HERE
-    usage: #{$0} [options] [range] [base]
-
-    -h --help          show this help
-
-    -l --log           log all information to a file
-    -s --steps         show intermediate steps for values
-                       whose base-2 logarithm exceeds this value
-    
-    -u --before-up     run bignum reallocations before the up step
-    -U --after-up      run bignum reallocations after the up step
-    -d --before-down   run bignum reallocations before the down step
-    -D --after-down    run bignum reallocations after the down step
-  HERE
-
+  options = {}
   OptionParser.new do |parser|
     parser.banner = "usage: #$0 [options]"
 
+    parser.on_head(
+      "-h", "--help",
+      "show this help"
+    ) { puts parser; exit }
+
     parser.on(
-      "-lLOG", "--log=LOG",
+      "-l LOG", "--log LOG",
       "tee all output to LOG"
     ) {|log| DJSP.log = log }
 
     parser.on(
-      
-    )
+      "-s [BL]", "--steps [BL]", Integer,
+      "show intermediate steps for values which are greater than this (B)ase-2 (L)ogarithm"
+    ) {|steps| DJSP.show_steps_over_log = steps || 0 }
 
     parser.on(
-      "-h", "--help",
-      "show this help"
-    ) { puts parser; exit }
+      "-b [BASE = 2]", "--base [BASE = 2]", Integer,
+      "set the base used for calculations to BASE"
+    ) {|base| options[:base] = base || 2 }
+    
+    [
+      [?u, "before", "up"  ],
+      [?U, "after",  "up"  ],
+      [?d, "before", "down"],
+      [?D, "after",  "down"]
+    ].each do |(flag, where, step)|
+      parser.on(
+        "-#{flag}", "--#{where}-#{step}", TrueClass,
+        "run bignum reallocations #{where} the #{step} step"
+      ) { DJSP::C.send :"realloc_#{where}_#{step}=", true }
+    end
   end.parse!
+
+  raise OptionParser::InvalidOption, ARGV[1] if ARGV.length > 1
+  
+  if ARGV.length == 1
+    options[:over] =
+      begin
+        Integer ARGV.first
+      rescue ArgumentError
+        ARGV.first =~ /(\d*)\.\.(\d*)(?:,(\d+))?/
+        raise OptionParser::InvalidOption, ARGV.first unless $~
+
+        (start, ending) = [$1, $2].map { _1.empty? ? nil : _1.to_i }
+        range = (start..ending)
+        range = range.step $3.to_i if $3
+        range
+      end
+  end
+
+  options[:over] ||= (1..)
+
+  if options[:over].is_a? Enumerable
+    DJSP.sequence options[:over], base: options[:base] do |index, mark, where|
+      puts "A#{options[:base] ? "_#{options[:base]}" : ""}(#{index}) @ #{where} = #{mark}"
+    end
+  else
+    r = DJSP.oneshot options[:over], base: options[:base]
+    puts "J#{options[:base] ? "_#{options[:base]}" : ""}(#{options[:over]}) = #{r}"
+  end
 end

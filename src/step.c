@@ -1,6 +1,6 @@
 #include "../include/step.h"
 
-__attribute__((aligned(4))) bool
+bool
   realloc_before_up   = false, realloc_after_up   = false,
   realloc_before_down = false, realloc_after_down = false;
 
