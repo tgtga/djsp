@@ -32,7 +32,7 @@ void sequence_alert(
 ) {
   u64 hwm = 0, hwm_index = 0;
 
-  for (u64 i = start, bound; endless | i < end; ) {
+  for (u64 i = start, bound; endless || i < end; ) {
     for (bound = i + alert; i < bound; i += step) {
       u64 r = base ? oneshot_n(i, base, memo) : oneshot_2(i, memo);
       if (r > hwm) {

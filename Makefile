@@ -1,10 +1,6 @@
   OBJ_DIR := src
-  EXE_DIR := exe
 BUILD_DIR := build
 
-EXE_SRC := $(wildcard $(EXE_DIR)/*.c)
-EXE_OBJ := $(OBJ_SRC:%.c=$(BUILD_DIR)/%.o)
-EXE     := $(EXE_SRC:$(EXE_DIR)/%.c=%)
 OBJ_SRC := $(wildcard $(OBJ_DIR)/*.c)
 OBJ     := $(OBJ_SRC:%.c=$(BUILD_DIR)/%.o)
 
@@ -18,42 +14,33 @@ CFLAGS := \
   -Wall -Wextra -Wpedantic
 LDFLAGS := -lgmp
 
-ifdef STATIC
-LIBRARY   := libdjsp.a
-OBJ_FLAGS :=
-else
+# ifdef STATIC
+# LIBRARY   := libdjsp.a
+# OBJ_FLAGS :=
+# else
 LIBRARY   := libdjsp.so
 OBJ_FLAGS := -fPIC
-endif
+# endif
 
 
 
-all: $(EXE)
-	@# perl tester.pl
+all: $(BUILD_DIR)/libdjsp.so
 	./tester.rb
 
 install: all
-	@# mkdir -p /usr/local/include/djsp
-	@# cp include/* /usr/local/include/djsp
-	@# cp $(BUILD_DIR)/$(LIBRARY) /usr/local/lib
-	@# cp djsp /usr/local/bin
-
 	install -D -t /usr/local/include/djsp include/*
 	install -D -t /usr/local/lib          $(BUILD_DIR)/$(LIBRARY)
 	install -D -t /usr/local/bin          djsp
 
 clean:
-	-rm -rf $(BUILD_DIR) libdjsp.so libdjsp.a $(EXE)
+	-rm -rf $(BUILD_DIR) libdjsp.so libdjsp.a
 
 .PHONY: all clean install
 
 
 
-$(EXE): %: $(BUILD_DIR)/$(EXE_DIR)/%.o $(BUILD_DIR)/$(LIBRARY)
-	$(CC) $(LDFLAGS) -o $@ $^ $(LOADLIBES) $(LDLIBS)
-
-$(BUILD_DIR)/libdjsp.a: $(OBJ)
-	ar rcs $@ $?
+# $(BUILD_DIR)/libdjsp.a: $(OBJ)
+# 	ar rcs $@ $?
 $(BUILD_DIR)/libdjsp.so: $(OBJ)
 	$(CC) -shared -lgmp -o $@ $^
 
