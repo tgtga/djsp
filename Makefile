@@ -30,7 +30,7 @@ endif
 
 all: $(EXE)
 	@# perl tester.pl
-	rspec tester.rb
+	./tester.rb
 
 install: all
 	@# mkdir -p /usr/local/include/djsp

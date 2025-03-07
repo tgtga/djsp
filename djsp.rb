@@ -33,12 +33,13 @@ module DJSP
 
     callback :hwm_callback, [*[:uint64] * 3], :void
     attach_function :sequence, [:uint64, *[:uint64] * 3, :bool, :memo_callback, :hwm_callback], :void
+    attach_function :sequence_alert, [:uint64, *[:uint64] * 3, :bool, :uint64, :memo_callback, :hwm_callback], :void
     attach_function :sequence_rootopt, [*[:uint64] * 3, :bool, :memo_callback, :hwm_callback], :void
   end
 
   public
 
-  VALID_SEQUENCE_OPTIMIZATIONS = [:root]
+  VALID_SEQUENCE_OPTIMIZATIONS = [:root, :alert]
 
   class << self
     def ssol; C::ssol; end
@@ -78,6 +79,12 @@ module DJSP
       C::set_up_log path
     end
 
+    def message what
+      time = Time.now.strftime "%FT%T.%L%z"
+      puts "#{time}: #{what}"
+      @log&.puts "#{time}: #{what}"
+    end
+
     def oneshot seed, base: nil, &memo
       case base
       when nil then C::oneshot_2       seed, memo
@@ -85,7 +92,7 @@ module DJSP
       end
     end
 
-    def sequence range = (1..), base: nil, optimize: [], &hwm
+    def sequence range = (1..), base: nil, optimize: [], alert: nil, &hwm
       unless range.is_a? Enumerator::ArithmeticSequence
         range = range.step
         raise TypeError, "`range` must be or be able to be converted to an Enumerator::ArithmeticSequence" \
@@ -113,6 +120,8 @@ module DJSP
           if base > 2
 
         C::sequence_rootopt left, right, step, endless, nil, hwm
+      elsif alert
+        C::sequence_alert base, left, right, step, endless, alert, nil, hwm
       else
         C::sequence base, left, right, step, endless, nil, hwm
       end
@@ -160,6 +169,11 @@ if $0 == __FILE__
         "run bignum reallocations #{where} the #{step} step"
       ) { DJSP::C.send :"realloc_#{where}_#{step}=", true }
     end
+
+    parser.on(
+      "-a STEP", "--alert-every STEP", Integer,
+      "alert when the sequence has elapsed STEP values"
+    ) {|alert| options[:alert] = alert }
   end.parse!
 
   raise OptionParser::InvalidOption, ARGV[1] if ARGV.length > 1
@@ -182,11 +196,11 @@ if $0 == __FILE__
   options[:over] ||= (1..)
 
   if options[:over].is_a? Enumerable
-    DJSP.sequence options[:over], base: options[:base] do |index, mark, where|
-      puts "A#{options[:base] ? "_#{options[:base]}" : ""}(#{index}) @ #{where} = #{mark}"
+    DJSP.sequence options[:over], base: options[:base], alert: options[:alert] do |index, mark, where|
+      DJSP.message "A#{options[:base] ? "_#{options[:base]}" : ""}(#{index}) @ #{where} = #{mark}"
     end
   else
     r = DJSP.oneshot options[:over], base: options[:base]
-    puts "J#{options[:base] ? "_#{options[:base]}" : ""}(#{options[:over]}) = #{r}"
+    DJSP.message "J#{options[:base] ? "_#{options[:base]}" : ""}(#{options[:over]}) = #{r}"
   end
 end

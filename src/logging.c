@@ -17,8 +17,10 @@ void set_up_log(int fd) {
 }
 */
 void set_up_log(const char *path) {
-  if (path == NULL)
+  if (path == NULL) {
     log_file = NULL;
+    return;
+  }
 
   log_file = fopen(path, "a");
   if (log_file == NULL)
