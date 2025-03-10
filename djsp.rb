@@ -44,6 +44,11 @@ module DJSP
   class << self
     def ssol; C::ssol; end
     def ssol= x
+      if x.nil?
+        C::ssol = 0
+        C::show_steps = false
+      end
+
       raise ArgumentError unless x.is_a? Integer
 
       C::ssol = x
