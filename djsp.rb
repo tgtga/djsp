@@ -11,14 +11,14 @@ module DJSP
     # step
 
     [
-      :realloc_before_up,   :realloc_after_up,
-      :realloc_before_down, :realloc_after_down
+      :step_realloc_before_up,   :step_realloc_after_up,
+      :step_realloc_before_down, :step_realloc_after_down
     ].each {|name| attach_variable name, :bool }
 
     # logging
     
     attach_function :set_up_log, [:string], :void
-    attach_function :message, [:string, :varargs], :void
+    attach_function :djsp_message, [:string, :varargs], :void
 
     # oneshot
 
@@ -39,7 +39,7 @@ module DJSP
 
   public
 
-  VALID_SEQUENCE_OPTIMIZATIONS = [:root, :alert]
+  VALID_SEQUENCE_OPTIMIZATIONS = [:root]
 
   class << self
     def ssol; C::ssol; end
@@ -167,13 +167,13 @@ if $0 == __FILE__
       parser.on(
         "-#{flag}", "--#{where}-#{step}", TrueClass,
         "run bignum reallocations #{where} the #{step} step"
-      ) { DJSP::C.send :"realloc_#{where}_#{step}=", true }
+      ) { DJSP::C.send :"step_realloc_#{where}_#{step}=", true }
     end
 
     parser.on(
-      "-a STEP", "--alert-every STEP", Integer,
+      "-a [STEP = 1]", "--alert-every [STEP = 1]", Integer,
       "alert when the sequence has elapsed STEP values"
-    ) {|alert| options[:alert] = alert }
+    ) {|alert| options[:alert] = alert || 1 }
   end.parse!
 
   raise OptionParser::InvalidOption, ARGV[1] if ARGV.length > 1

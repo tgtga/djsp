@@ -7,7 +7,7 @@ size_t ssol = 0;
   if (show_steps) {                                             \
     size_t l = lg;                                              \
     if (ssol == 0 || l >= ssol)                                 \
-      message("%lu step %u ~%lu**%zu\n", seed, count, base, l); \
+      djsp_message("%lu step %u ~%lu**%zu\n", seed, count, base, l); \
   }                                                             \
 } while (0)
 
@@ -36,7 +36,7 @@ u64 oneshot_2(
     if ((additional = memo(count, 0, v_big)))
       return (count - 1) + additional;
 
-  big_2(v_big);
+  step_big_2(v_big);
 
   if (!mpz_fits_ulong_p(v_big))
     goto process_big;
@@ -96,7 +96,7 @@ u64 oneshot_n(
     if ((additional = memo(count, 0, v_big)))
       return (count - 1) + additional;
 
-  big_n(v_big, base);
+  step_big_n(v_big, base);
 
   if (!mpz_fits_ulong_p(v_big))
     goto process_big;

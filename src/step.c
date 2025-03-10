@@ -1,11 +1,11 @@
 #include "../include/step.h"
 
 bool
-  realloc_before_up   = false, realloc_after_up   = false,
-  realloc_before_down = false, realloc_after_down = false;
+  step_realloc_before_up   = false, step_realloc_after_up   = false,
+  step_realloc_before_down = false, step_realloc_after_down = false;
 
-static void big_1_2(mpz_t v) {
-  if (realloc_before_down)
+static void step_big_1_2(mpz_t v) {
+  if (step_realloc_before_down)
     mpz_realloc2(v, mpz_sizeinbase(v, 2));
 
   size_t limbs = mpz_size(v);
@@ -19,15 +19,15 @@ static void big_1_2(mpz_t v) {
     mpz_limbs_finish(root, (limbs + 1) / 2);
   }
 
-  if (realloc_after_down)
+  if (step_realloc_after_down)
     mpz_realloc2(root, mpz_sizeinbase(root, 2));
 
   mpz_clear(v);
   *v = *root;
 }
 
-static void big_3_2(mpz_t v) {
-  if (realloc_before_up)
+static void step_big_3_2(mpz_t v) {
+  if (step_realloc_before_up)
     mpz_realloc2(v, mpz_sizeinbase(v, 2));
 
   const size_t limbs = mpz_size(v);
@@ -82,20 +82,20 @@ static void big_3_2(mpz_t v) {
 
   mpz_clear(cube_num);
 
-  if (realloc_after_up)
+  if (step_realloc_after_up)
     mpz_realloc2(v, mpz_sizeinbase(v, 2));
 }
 
-extern inline void big_2(mpz_t v) {
+extern inline void step_big_2(mpz_t v) {
   if (mpz_odd_p(v))
-    big_3_2(v);
+    step_big_3_2(v);
   else
-    big_1_2(v);
+    step_big_1_2(v);
 }
 
 
 
-static void big_n_n(
+static void step_big_n_n(
   mpz_t v,
   u64 base,
   u64 power
@@ -105,16 +105,16 @@ static void big_n_n(
 }
 
 #define N_STEP(direction, power) do {         \
-  if (realloc_before_ ## direction)           \
+  if (step_realloc_before_ ## direction)           \
     mpz_realloc2(v, mpz_sizeinbase(v, base)); \
                                               \
-  big_n_n(v, base, (power));                  \
+  step_big_n_n(v, base, (power));                  \
                                               \
-  if (realloc_before_ ## direction)           \
+  if (step_realloc_before_ ## direction)           \
     mpz_realloc2(v, mpz_sizeinbase(v, base)); \
 } while (0)
 
-extern inline void big_n(
+extern inline void step_big_n(
   mpz_t v,
   u64 base
 ) {

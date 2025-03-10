@@ -29,7 +29,7 @@ void set_up_log(const char *path) {
   setvbuf(log_file, NULL, _IOLBF, 0);
 }
 
-void message(char *format, ...) {
+void djsp_message(char *format, ...) {
   // https://stackoverflow.com/a/77826253
 
   struct timespec tp;

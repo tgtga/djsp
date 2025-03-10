@@ -16,7 +16,7 @@ void sequence(
 
       /*
       char *bit; asprintf(&bit, base ? "_%lu" : "", base);
-      message("A%s(%lu) @ %lu = %lu\n", bit, hwm_index, i, hwm);
+      djsp_message("A%s(%lu) @ %lu = %lu\n", bit, hwm_index, i, hwm);
       free(bit);
       */
     }
@@ -40,7 +40,7 @@ void sequence_alert(
         if (found_hwm) found_hwm(hwm_index, hwm, i);
       }
     }
-    message("finished %lu\n", bound);
+    djsp_message("finished %lu\n", bound);
   }
 }
 
@@ -51,8 +51,8 @@ void sequence_rootopt(
 ) {
   u64 hwm = 6, hwm_index = 2;
 
-  if (found_hwm) found_hwm(1, 1, 2); // message("A(1) @ 2 = 1\n");
-  if (found_hwm) found_hwm(2, 6, 3); // message("A(2) @ 3 = 6\n");
+  if (found_hwm) found_hwm(1, 1, 2); // djsp_message("A(1) @ 2 = 1\n");
+  if (found_hwm) found_hwm(2, 6, 3); // djsp_message("A(2) @ 3 = 6\n");
   
   u64 n = 4;
   for (u64 stride = 2; ; ++stride) {
@@ -65,7 +65,7 @@ void sequence_rootopt(
     r = oneshot_2(even, memo);
     if (r > hwm) {
       hwm = r; ++hwm_index;
-      if (found_hwm) found_hwm(hwm_index, hwm, even); // message("A(%lu) @ %lu = %lu\n", hwm_index, even, hwm);
+      if (found_hwm) found_hwm(hwm_index, hwm, even); // djsp_message("A(%lu) @ %lu = %lu\n", hwm_index, even, hwm);
     }
 
     for (u64 i = lower; i <= upper; i += 2) {
@@ -74,7 +74,7 @@ void sequence_rootopt(
       r = oneshot_2(i, memo);
       if (r > hwm) {
         hwm = r; ++hwm_index;
-        if (found_hwm) found_hwm(hwm_index, hwm, i); // message("A(%lu) @ %lu = %lu\n", hwm_index, i, hwm);
+        if (found_hwm) found_hwm(hwm_index, hwm, i); // djsp_message("A(%lu) @ %lu = %lu\n", hwm_index, i, hwm);
       }
     }
   }
