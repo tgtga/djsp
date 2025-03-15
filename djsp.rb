@@ -26,7 +26,7 @@ module DJSP
     attach_variable :ssol, :size_t
 
     callback :memo_callback, [:uint64, :uint64, :pointer], :uint64
-    attach_function :oneshot_2, [:uint64, :memo_callback], :uint64
+    attach_function :oneshot_2, [:uint64], :uint64
     attach_function :oneshot_n, [:uint64, :uint64, :memo_callback], :uint64
 
     # sequence
@@ -92,7 +92,7 @@ module DJSP
 
     def oneshot seed, base: nil, &memo
       case base
-      when nil then C::oneshot_2       seed, memo
+      when nil then C::oneshot_2       seed
       else          C::oneshot_n seed, base, memo
       end
     end
@@ -183,7 +183,7 @@ if $0 == __FILE__
 
   raise OptionParser::InvalidOption, ARGV[1] if ARGV.length > 1
   
-  if ARGV.length == 1
+  if ARGV.length == 1 
     options[:over] =
       begin
         Integer ARGV.first

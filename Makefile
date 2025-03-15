@@ -11,7 +11,8 @@ CC := clang
 CFLAGS := \
 	-std=c99 \
   -O3 -march=native -mtune=native \
-  -Wall -Wextra -Wpedantic
+  -Wall -Wextra -Wpedantic \
+	-g
 LDFLAGS := -lgmp
 
 # ifdef STATIC

@@ -4,93 +4,79 @@ bool
   step_realloc_before_up   = false, step_realloc_after_up   = false,
   step_realloc_before_down = false, step_realloc_after_down = false;
 
-static void step_big_1_2(mpz_t v) {
+static void step_big_1_2(
+  mp_limb_t *x, mp_size_t limbs,
+  mp_limb_t **out_p, mp_size_t *out_limbs_p
+) {
   if (step_realloc_before_down)
-    mpz_realloc2(v, mpz_sizeinbase(v, 2));
+    while (x[limbs - 1] == 0)
+      --limbs;
+  
+  mp_size_t root_limbs = (limbs + 1) >> 1;
+  mp_limb_t *root = malloc(sizeof(*root) * root_limbs);
 
-  size_t limbs = mpz_size(v);
-
-  mpz_t root; mpz_init(root);
-  {
-    mp_limb_t *root_mpp = mpz_limbs_write(root, (limbs + 1) / 2);
-
-    mpn_sqrtrem(root_mpp, NULL, mpz_limbs_read(v), limbs);
-
-    mpz_limbs_finish(root, (limbs + 1) / 2);
-  }
+  mpn_sqrtrem(root, NULL, x, limbs);
 
   if (step_realloc_after_down)
-    mpz_realloc2(root, mpz_sizeinbase(root, 2));
+    while (root[root_limbs - 1] == 0)
+      --root_limbs;
 
-  mpz_clear(v);
-  *v = *root;
+  *out_p = root; *out_limbs_p = root_limbs;
 }
 
-static void step_big_3_2(mpz_t v) {
+static void step_big_3_2(
+  mp_limb_t *x, mp_size_t limbs,
+  mp_limb_t **out_p, mp_size_t *out_limbs_p
+) {
   if (step_realloc_before_up)
-    mpz_realloc2(v, mpz_sizeinbase(v, 2));
-
-  const size_t limbs = mpz_size(v);
-
-
-
+    while (x[limbs - 1] == 0)
+      --limbs;
+  
   // square = v ** 2
+  mp_size_t square_limbs = limbs * 2;
+  mp_limb_t *square = malloc(sizeof(*square) * square_limbs);
 
-  mpz_t square_num; mpz_init(square_num);
-  {
-    mp_limb_t *square_raw = mpz_limbs_write(square_num, limbs * 2);
-
-    mpn_sqr(square_raw, mpz_limbs_read(v), limbs);
-
-    mpz_limbs_finish(square_num, limbs * 2);
-  }
-
-
+  mpn_sqr(square, x, limbs);
 
   // cube = square * v = v ** 3
+  mp_size_t cube_limbs = limbs * 3;
+  mp_limb_t *cube = malloc(sizeof(*cube) * cube_limbs);
 
-  mpz_t cube_num; mpz_init(cube_num);
-  {
-    mp_limb_t *cube_raw = mpz_limbs_write(cube_num, limbs * 3);
+  mpn_mul(cube, square, limbs * 2, x, limbs);
+  free(square);
 
-    mpn_mul(cube_raw, mpz_limbs_read(square_num), limbs * 2, mpz_limbs_read(v), limbs);
+  mp_size_t reduction = 0;
+  while (cube[cube_limbs - 1 - reduction] == 0)
+    ++reduction;
+  cube_limbs -= reduction;
+  // if (reduction)
+  //   fprintf(stderr, "in big_3_2, reduced cube_limbs by %lu\n", reduction);
 
-    mpz_limbs_finish(cube_num, limbs * 3);
-  }
+  // v = isqrt(cube)
 
-  mpz_clear(square_num);
+  mp_size_t out_limbs = (cube_limbs + 1) >> 1;
+  mp_limb_t *out = malloc(sizeof(*out) * out_limbs);
 
-
-
-  // v = isqrt(cube) = isqrt(v ** 3) = floor(v ** 3/2)
-
-  {
-    const mp_limb_t *cube_raw_r = mpz_limbs_read(cube_num);
-
-    // mpn_sqrtrem requires the top limb to be nonzero,
-    // so advance 'cube_limbs' down until a nonzero limb is found
-    size_t cube_limbs = limbs * 3;
-    while (cube_raw_r[cube_limbs - 1] == 0)
-      --cube_limbs;
-
-    mp_limb_t *v_mpp = mpz_limbs_write(v, (cube_limbs + 1) / 2);
-
-    mpn_sqrtrem(v_mpp, NULL, cube_raw_r, cube_limbs);
-
-    mpz_limbs_finish(v, (cube_limbs + 1) / 2);
-  }
-
-  mpz_clear(cube_num);
+  mpn_sqrtrem(out, NULL, cube, cube_limbs);
+  free(cube);
 
   if (step_realloc_after_up)
-    mpz_realloc2(v, mpz_sizeinbase(v, 2));
+    while (out[out_limbs - 1] == 0)
+      --out_limbs;
+
+  *out_p = out; *out_limbs_p = out_limbs;
 }
 
-extern inline void step_big_2(mpz_t v) {
-  if (mpz_odd_p(v))
-    step_big_3_2(v);
-  else
-    step_big_1_2(v);
+extern inline void step_big_2(
+  mp_limb_t *x, mp_size_t limbs,
+  mp_limb_t **out_p, mp_size_t *out_limbs_p
+) {
+  // if (mpz_odd_p(MPZ_ROINIT_N(x, limbs)))
+  if ((limbs != 0) & *x) {
+    step_big_3_2(x, limbs, out_p, out_limbs_p);
+  } else {
+    step_big_1_2(x, limbs, out_p, out_limbs_p);
+  }
 }
 
 

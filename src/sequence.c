@@ -9,7 +9,7 @@ void sequence(
   u64 hwm = 0, hwm_index = 0;
 
   for (u64 i = start; endless || i < end; i += step) {
-    u64 r = base ? oneshot_n(i, base, memo) : oneshot_2(i, memo);
+    u64 r = base ? oneshot_n(i, base, memo) : oneshot_2(i);
     if (r > hwm) {
       hwm = r; ++hwm_index;
       if (found_hwm) found_hwm(hwm_index, hwm, i);
@@ -34,7 +34,7 @@ void sequence_alert(
 
   for (u64 i = start, bound; endless || i < end; ) {
     for (bound = i + alert; i < bound; i += step) {
-      u64 r = base ? oneshot_n(i, base, memo) : oneshot_2(i, memo);
+      u64 r = base ? oneshot_n(i, base, memo) : oneshot_2(i);
       if (r > hwm) {
         hwm = r; ++hwm_index;
         if (found_hwm) found_hwm(hwm_index, hwm, i);
@@ -62,7 +62,7 @@ void sequence_rootopt(
     upper = n - ((n & 1) + 1);
     // printf("%lu -> %lu, condensing evens into %lu\n", lower, upper, even);
 
-    r = oneshot_2(even, memo);
+    r = oneshot_2(even);
     if (r > hwm) {
       hwm = r; ++hwm_index;
       if (found_hwm) found_hwm(hwm_index, hwm, even); // djsp_message("A(%lu) @ %lu = %lu\n", hwm_index, even, hwm);
@@ -71,7 +71,7 @@ void sequence_rootopt(
     for (u64 i = lower; i <= upper; i += 2) {
       if (i > end) return;
 
-      r = oneshot_2(i, memo);
+      r = oneshot_2(i);
       if (r > hwm) {
         hwm = r; ++hwm_index;
         if (found_hwm) found_hwm(hwm_index, hwm, i); // djsp_message("A(%lu) @ %lu = %lu\n", hwm_index, i, hwm);
