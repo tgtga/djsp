@@ -24,16 +24,12 @@ Program versions are described by the [Semantic Versioning 2.0.0 protocol](https
 
 The functions in `logging.c`, `intmath.c`, and `step.c` are not intended to be used directly. Their interfaces may or may not be documented.
 
-Individual function documentation coming soon...
-
 ### oneshot.c
 
-#### `u64 oneshot_2(u64 seed)`
-This function will return the length of the base-2 juggler sequence starting with the value `seed`.
-
-#### `u64 oneshot_n(u64 seed, u64 base)`
-This function will return the length of the base-`base` juggler sequence starting with the value `seed`.
+Functions in this file are used to calculate the length of sequences starting at a certain "seed" value.
 
 ### sequence.c
 
-#### `void sequence(u64 base, u64 start, u64 end, u64 step, bool endless, hwm_callback found_hwm)`
+Functions in this file are used to iterate over all the seed values in a range, calling a provided callback function when the high-water marks of the range are found.
+
+Individual function documentation coming soon...
