@@ -98,12 +98,12 @@ static void step_big_n_n(
 }
 
 #define N_STEP(direction, power) do {         \
-  if (step_realloc_before_ ## direction)           \
+  if (step_realloc_before_ ## direction)      \
     mpz_realloc2(v, mpz_sizeinbase(v, base)); \
                                               \
-  step_big_n_n(v, base, (power));                  \
+  step_big_n_n(v, base, (power));             \
                                               \
-  if (step_realloc_before_ ## direction)           \
+  if (step_realloc_before_ ## direction)      \
     mpz_realloc2(v, mpz_sizeinbase(v, base)); \
 } while (0)
 

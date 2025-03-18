@@ -9,6 +9,15 @@
 #include <errno.h>
 #include <stdarg.h>
 
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
+#define DJSP_VERSION_MAJOR 1
+#define DJSP_VERSION_MINOR 0
+#define DJSP_VERSION_PATCH 0
+#define DJSP_VERSION_INT (DJSP_VERSION_MAJOR * 10000 + DJSP_VERSION_MINOR * 100 + DJSP_VERSION_PATCH)
+#define DJSP_VERSION_STR STR(DJSP_VERSION_MAJOR) "." STR(DJSP_VERSION_MINOR) "." STR(DJSP_VERSION_PATCH)
+
 #define DIE(...) do {                    \
   fprintf(stderr, __VA_ARGS__);          \
   fprintf(stderr, "i'm gonna die...\n"); \

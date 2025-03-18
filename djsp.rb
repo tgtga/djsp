@@ -39,6 +39,11 @@ module DJSP
 
   public
 
+  VERSION_MAJOR = 1
+  VERSION_MINOR = 0
+  VERSION_PATCH = 0
+  VERSION       = "1.0.0"
+
   VALID_SEQUENCE_OPTIMIZATIONS = [:root]
 
   class << self
@@ -162,6 +167,11 @@ if $0 == __FILE__
       "-b [BASE = 2]", "--base [BASE = 2]", Integer,
       "set the base used for calculations to BASE"
     ) {|base| options[:base] = base || 2 }
+
+    parser.on(
+      "-a [STEP = 1]", "--alert-every [STEP = 1]", Integer,
+      "alert when the sequence has elapsed STEP values"
+    ) {|alert| options[:alert] = alert || 1 }
     
     [
       [?u, "before", "up"  ],
@@ -174,11 +184,6 @@ if $0 == __FILE__
         "run bignum reallocations #{where} the #{step} step"
       ) { DJSP::C.send :"step_realloc_#{where}_#{step}=", true }
     end
-
-    parser.on(
-      "-a [STEP = 1]", "--alert-every [STEP = 1]", Integer,
-      "alert when the sequence has elapsed STEP values"
-    ) {|alert| options[:alert] = alert || 1 }
   end.parse!
 
   raise OptionParser::InvalidOption, ARGV[1] if ARGV.length > 1
