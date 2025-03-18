@@ -3,13 +3,13 @@
 void sequence(
   u64 base,
   u64 start, u64 end, u64 step, bool endless,
-  memo_callback memo,
+  // memo_callback memo,
   hwm_callback found_hwm
 ) {
   u64 hwm = 0, hwm_index = 0;
 
   for (u64 i = start; endless || i < end; i += step) {
-    u64 r = base ? oneshot_n(i, base, memo) : oneshot_2(i);
+    u64 r = base ? oneshot_n(i, base) : oneshot_2(i);
     if (r > hwm) {
       hwm = r; ++hwm_index;
       if (found_hwm) found_hwm(hwm_index, hwm, i);
@@ -27,14 +27,14 @@ void sequence_alert(
   u64 base,
   u64 start, u64 end, u64 step, bool endless,
   u64 alert,
-  memo_callback memo,
+  // memo_callback memo,
   hwm_callback found_hwm
 ) {
   u64 hwm = 0, hwm_index = 0;
 
   for (u64 i = start, bound; endless || i < end; ) {
     for (bound = i + alert; i < bound; i += step) {
-      u64 r = base ? oneshot_n(i, base, memo) : oneshot_2(i);
+      u64 r = base ? oneshot_n(i, base) : oneshot_2(i);
       if (r > hwm) {
         hwm = r; ++hwm_index;
         if (found_hwm) found_hwm(hwm_index, hwm, i);
@@ -46,7 +46,7 @@ void sequence_alert(
 
 void sequence_rootopt(
   u64 start, u64 end, u64 step, bool endless,
-  memo_callback memo,
+  // memo_callback memo,
   hwm_callback found_hwm
 ) {
   u64 hwm = 6, hwm_index = 2;

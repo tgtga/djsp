@@ -10,7 +10,7 @@
 
 typedef void (*hwm_callback)(u64, u64, u64);
 
-void sequence(   u64, u64, u64, u64, bool, memo_callback, hwm_callback);
-void sequence_rootopt(u64, u64, u64, bool, memo_callback, hwm_callback);
+void sequence(   u64, u64, u64, u64, bool, hwm_callback);
+void sequence_rootopt(u64, u64, u64, bool, hwm_callback);
 
 #endif

@@ -5,9 +5,11 @@ bool
   step_realloc_before_down = false, step_realloc_after_down = false;
 
 static void step_big_1_2(
-  mp_limb_t *x, mp_size_t limbs,
-  mp_limb_t **out_p, mp_size_t *out_limbs_p
+  mp_limb_t **out_p, mp_size_t *out_limbs_p,
+  mp_limb_t **x_p,   mp_size_t *limbs_p
 ) {
+  mp_limb_t *x = *x_p; mp_size_t limbs = *limbs_p;
+
   if (step_realloc_before_down)
     while (x[limbs - 1] == 0)
       --limbs;
@@ -16,6 +18,7 @@ static void step_big_1_2(
   mp_limb_t *root = malloc(sizeof(*root) * root_limbs);
 
   mpn_sqrtrem(root, NULL, x, limbs);
+  free(*x_p);
 
   if (step_realloc_after_down)
     while (root[root_limbs - 1] == 0)
@@ -25,9 +28,11 @@ static void step_big_1_2(
 }
 
 static void step_big_3_2(
-  mp_limb_t *x, mp_size_t limbs,
-  mp_limb_t **out_p, mp_size_t *out_limbs_p
+  mp_limb_t **out_p, mp_size_t *out_limbs_p,
+  mp_limb_t **x_p,   mp_size_t *limbs_p
 ) {
+  mp_limb_t *x = *x_p; mp_size_t limbs = *limbs_p;
+
   if (step_realloc_before_up)
     while (x[limbs - 1] == 0)
       --limbs;
@@ -43,6 +48,7 @@ static void step_big_3_2(
   mp_limb_t *cube = malloc(sizeof(*cube) * cube_limbs);
 
   mpn_mul(cube, square, limbs * 2, x, limbs);
+  free(*x_p);
   free(square);
 
   mp_size_t reduction = 0;
@@ -68,15 +74,16 @@ static void step_big_3_2(
 }
 
 extern inline void step_big_2(
-  mp_limb_t *x, mp_size_t limbs,
-  mp_limb_t **out_p, mp_size_t *out_limbs_p
+  mp_limb_t **out_p, mp_size_t *out_limbs_p,
+  mp_limb_t **x_p,   mp_size_t *limbs_p
 ) {
+  mp_limb_t *x = *x_p; mp_size_t limbs = *limbs_p;
+
   // if (mpz_odd_p(MPZ_ROINIT_N(x, limbs)))
-  if ((limbs != 0) & *x) {
-    step_big_3_2(x, limbs, out_p, out_limbs_p);
-  } else {
-    step_big_1_2(x, limbs, out_p, out_limbs_p);
-  }
+  if ((limbs != 0) & *x)
+    step_big_3_2(out_p, out_limbs_p, x_p, limbs_p);
+  else
+    step_big_1_2(out_p, out_limbs_p, x_p, limbs_p);
 }
 
 

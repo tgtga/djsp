@@ -14,6 +14,6 @@
 extern char *time_format;
 
 void set_up_log(const char *);
-void message(char *, ...);
+void djsp_message(char *, ...);
 
 #endif

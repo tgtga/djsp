@@ -23,7 +23,7 @@ u64 oneshot_2(
     return 0;
 
   u64 v_int = seed;
-  mp_limb_t *vp = NULL, *outp; mp_size_t vl, outl;
+  mp_limb_t *vp = NULL; mp_size_t vl;
   u64 count = 0, additional;
 
   goto process_int;
@@ -38,10 +38,7 @@ u64 oneshot_2(
       return (count - 1) + additional;
   */
   
-  step_big_2(vp, vl, &outp, &outl);
-  free(vp);
-  vp = outp; outp = NULL;
-  vl = outl; outl = 0;
+  step_big_2(&vp, &vl, &vp, &vl);
 
   mpz_t temp_ulong; temp_ulong->_mp_d = vp; temp_ulong->_mp_size = vl;
   if (!mpz_fits_ulong_p(temp_ulong))
@@ -68,7 +65,7 @@ u64 oneshot_2(
 
       // first time through, vp will be null
       // every other free should be guaranteed safe though
-      if (vp) free(vp);
+      // if (vp) free(vp);
       vp = temp->_mp_d; vl = temp->_mp_size;
       while (vp[vl - 1] == 0)
         --vl;
@@ -91,8 +88,8 @@ u64 oneshot_2(
 
 u64 oneshot_n(
   u64 seed,
-  u64 base,
-  memo_callback memo
+  u64 base /*,
+  memo_callback memo */
 ) {
   u64 v_int = seed;
   mpz_t v_big; mpz_init(v_big);
@@ -108,9 +105,11 @@ u64 oneshot_n(
 
   PRINT_STEP_BIG(base);
 
+  /*
   if (memo)
     if ((additional = memo(count, 0, v_big)))
       return (count - 1) + additional;
+  */
 
   step_big_n(v_big, base);
 
@@ -125,9 +124,11 @@ u64 oneshot_n(
 
   PRINT_STEP_INT_N(base);
 
+  /*
   if (memo)
     if ((additional = memo(count, v_int, NULL)))
       return (count - 1) + additional;
+  */
 
   u64 r = v_int % base;
   if (v_int > threshold && r > 0) {

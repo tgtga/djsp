@@ -25,16 +25,16 @@ module DJSP
     attach_variable :show_steps, :bool
     attach_variable :ssol, :size_t
 
-    callback :memo_callback, [:uint64, :uint64, :pointer], :uint64
+    # callback :memo_callback, [:uint64, :uint64, :pointer], :uint64
     attach_function :oneshot_2, [:uint64], :uint64
-    attach_function :oneshot_n, [:uint64, :uint64, :memo_callback], :uint64
+    attach_function :oneshot_n, [:uint64, :uint64], :uint64
 
     # sequence
 
     callback :hwm_callback, [*[:uint64] * 3], :void
-    attach_function :sequence, [:uint64, *[:uint64] * 3, :bool, :memo_callback, :hwm_callback], :void
-    attach_function :sequence_alert, [:uint64, *[:uint64] * 3, :bool, :uint64, :memo_callback, :hwm_callback], :void
-    attach_function :sequence_rootopt, [*[:uint64] * 3, :bool, :memo_callback, :hwm_callback], :void
+    attach_function :sequence, [:uint64, *[:uint64] * 3, :bool, :hwm_callback], :void
+    attach_function :sequence_alert, [:uint64, *[:uint64] * 3, :bool, :uint64, :hwm_callback], :void
+    attach_function :sequence_rootopt, [*[:uint64] * 3, :bool, :hwm_callback], :void
   end
 
   public
@@ -92,8 +92,8 @@ module DJSP
 
     def oneshot seed, base: nil, &memo
       case base
-      when nil then C::oneshot_2       seed
-      else          C::oneshot_n seed, base, memo
+      when nil then C::oneshot_2 seed
+      else          C::oneshot_n seed, base
       end
     end
 
@@ -124,11 +124,11 @@ module DJSP
         raise RangeError, "root optimization not implemented for bases other than 2" \
           if base > 2
 
-        C::sequence_rootopt left, right, step, endless, nil, hwm
+        C::sequence_rootopt left, right, step, endless, hwm
       elsif alert
-        C::sequence_alert base, left, right, step, endless, alert, nil, hwm
+        C::sequence_alert base, left, right, step, endless, alert, hwm
       else
-        C::sequence base, left, right, step, endless, nil, hwm
+        C::sequence base, left, right, step, endless, hwm
       end
 
       out unless block_given?
