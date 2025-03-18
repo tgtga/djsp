@@ -1,4 +1,4 @@
-# djsp
+# djsp (Draco's Juggler Sequence Program)
 
 ## Description
 
