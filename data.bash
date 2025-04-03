@@ -5,11 +5,13 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
+stdbuf -oL ./djsp.rb -s -- $1 \
+  | perl -lne 'print if /step/' \
+  | perl -pe 's/.+ step (\d+) ~2\*\*(\d+)/$1 $2/' >>$1.dat;
+
 {
   echo '$DATA <<END';
-  stdbuf -oL ./djsp.rb -s -- $1 \
-    | perl -lne 'print if /step/' \
-    | perl -pe 's/.+ step (\d+) ~2\*\*(\d+)/$1 $2/';
+  cat $1.dat;
   echo 'END';
 
   cat <<HERE
