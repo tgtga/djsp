@@ -3,3 +3,6 @@ build/
 NOTES.md
 PRESENTATION.md
 SHOWOFFING.md
+*.svg
+*.png
+*.dat
