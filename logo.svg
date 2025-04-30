@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 <svg width='105' height='70' xmlns='http://www.w3.org/2000/svg'>
 <path fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='round' d='M 25,45 L 5,45 L 15,35 L 25,45 L 25,5 ' />
 <path fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='round' d='M 30,45 L 40,35 L 50,45 L 50,65 L 30,65 ' />
@@ -6,11 +5,4 @@
 <path fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='round' d='M 55,45 L 65,35 L 75,45 L 75,35 L 55,35 L 55,25 L 75,25 ' />
 <path fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='round' d='M 80,45 L 90,35 L 100,45 L 80,45 L 80,65 ' />
 <path fill='none' stroke='black' stroke-width='1' stroke-linecap='round' stroke-linejoin='round' d='' />
-=======
-<svg width='150' height='150' xmlns='http://www.w3.org/2000/svg'>
-<path fill='none' stroke='black' stroke-width='1' d='M 40,100 L 20,100 L 30,90 L 40,100 L 40,60 ' />
-<path fill='none' stroke='black' stroke-width='1' d='M 45,100 L 55,90 L 65,100 L 65,120 L 45,120 ' />
-<path fill='none' stroke='black' stroke-width='1' d='M 70,100 L 80,90 L 90,100 L 90,90 L 70,90 L 70,80 L 90,80 ' />
-<path fill='none' stroke='black' stroke-width='1' d='M 95,100 L 105,90 L 115,100 L 95,100 L 95,120 ' />
->>>>>>> refs/remotes/origin/main
 </svg>
