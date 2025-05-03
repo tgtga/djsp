@@ -138,6 +138,25 @@ module DJSP
 
       out unless block_given?
     end
+
+    def equal_to(what, base: nil) = (1..).lazy.filter { oneshot(_1, base: base) == what } 
+    def first_equal_to(what, base: nil) = equal_to(what, base: base).first
+    def equal_to_over range, base: nil, all: false
+      memo = {}
+
+      range.each do |i|
+        res = oneshot i, base: base
+        
+        if all
+          memo[res] ||= []
+          memo[res] << i
+        else
+          memo[res] ||= i
+        end
+      end
+
+      memo.sort_by {|k, _| k }.to_h
+    end
   end
 end
 
