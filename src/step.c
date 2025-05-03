@@ -4,15 +4,39 @@ bool
   step_realloc_before_up   = false, step_realloc_after_up   = false,
   step_realloc_before_down = false, step_realloc_after_down = false;
 
+#if defined RBD
+#pragma message "RBD"
+#define BD while (x[limbs - 1] == 0) --limbs
+#endif
+#if defined RAD
+#pragma message "RAD"
+#define AD while (root[root_limbs - 1] == 0) --root_limbs
+#endif
+
+#if defined RBU
+#pragma message "RBU"
+#define BU while (x[limbs - 1] == 0) --limbs
+#endif
+#if defined RAU
+#pragma message "RAU"
+#define AU while (out[out_limbs - 1] == 0) --out_limbs
+#endif
+
+#if !defined RBD && !defined RAD && !defined RBU && !defined RAU
+#pragma message "NONE"
+#define BD if (step_realloc_before_down) while (x[limbs - 1] == 0) --limbs
+#define AD if (step_realloc_after_down) while (root[root_limbs - 1] == 0) --root_limbs
+#define BU if (step_realloc_before_up) while (x[limbs - 1] == 0) --limbs
+#define AU if (step_realloc_after_up) while (out[out_limbs - 1] == 0) --out_limbs
+#endif
+
 static void step_big_1_2(
   mp_limb_t **out_p, mp_size_t *out_limbs_p,
   mp_limb_t **x_p,   mp_size_t *limbs_p
 ) {
   mp_limb_t *x = *x_p; mp_size_t limbs = *limbs_p;
 
-  if (step_realloc_before_down)
-    while (x[limbs - 1] == 0)
-      --limbs;
+  BD;
   
   mp_size_t root_limbs = (limbs + 1) >> 1;
   mp_limb_t *root = malloc(sizeof(*root) * root_limbs);
@@ -20,9 +44,7 @@ static void step_big_1_2(
   mpn_sqrtrem(root, NULL, x, limbs);
   free(*x_p);
 
-  if (step_realloc_after_down)
-    while (root[root_limbs - 1] == 0)
-      --root_limbs;
+  AD;
 
   *out_p = root; *out_limbs_p = root_limbs;
 }
@@ -33,9 +55,7 @@ static void step_big_3_2(
 ) {
   mp_limb_t *x = *x_p; mp_size_t limbs = *limbs_p;
 
-  if (step_realloc_before_up)
-    while (x[limbs - 1] == 0)
-      --limbs;
+  BU;
   
   // square = v ** 2
   mp_size_t square_limbs = limbs * 2;
@@ -66,9 +86,7 @@ static void step_big_3_2(
   mpn_sqrtrem(out, NULL, cube, cube_limbs);
   free(cube);
 
-  if (step_realloc_after_up)
-    while (out[out_limbs - 1] == 0)
-      --out_limbs;
+  AU;
 
   *out_p = out; *out_limbs_p = out_limbs;
 }
@@ -119,3 +137,5 @@ extern inline void step_big_n(
 }
 
 #undef N_STEP
+#undef STEP_BIG_1_2_FUN
+#undef STEP_BIG_3_2_FUN

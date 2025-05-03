@@ -13,6 +13,7 @@ CFLAGS := \
   -O3 -march=native -mtune=native \
   -Wall -Wextra -Wpedantic \
 	-g
+CFLAGS += $(WHATEVER)
 LDFLAGS := -lgmp
 
 # ifdef STATIC
@@ -26,6 +27,7 @@ OBJ_FLAGS := -fPIC
 
 
 all: $(BUILD_DIR)/libdjsp.so
+	echo $(CFLAGS)
 	./tester.rb
 
 install: all
