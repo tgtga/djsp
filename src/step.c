@@ -25,9 +25,9 @@ bool
 #if !defined RBD && !defined RAD && !defined RBU && !defined RAU
 #pragma message "NONE"
 #define BD if (step_realloc_before_down) while (x[limbs - 1] == 0) --limbs
-#define AD if (step_realloc_after_down) while (root[root_limbs - 1] == 0) --root_limbs
-#define BU if (step_realloc_before_up) while (x[limbs - 1] == 0) --limbs
-#define AU if (step_realloc_after_up) while (out[out_limbs - 1] == 0) --out_limbs
+#define AD if (step_realloc_after_down)  while (root[root_limbs - 1] == 0) --root_limbs
+#define BU if (step_realloc_before_up)   while (x[limbs - 1] == 0) --limbs
+#define AU if (step_realloc_after_up)    while (out[out_limbs - 1] == 0) --out_limbs
 #endif
 
 static void step_big_1_2(
