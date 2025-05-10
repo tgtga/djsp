@@ -7,26 +7,38 @@ juggler(seed, base = 2) = {
   my(n = seed, past = 0, count = -1);
 
   while(n != past,
+    past = n; n = js(n, base);
     count += 1;
-    past = n;
-    n = js(n, base);
   );
 
   return(count);
 };
 
-jugglerhash(hash, which, seed, base = 2) = {
+juggler_hash(hash, which, seed, base = 2) = {
   my(
-    n = seed, past = 0, count = -1,
+    n = seed, past = 0,
     hs = List()
   );
 
   while(n != past,
-    count += 1;
-    past = n;
-    n = js(n, base);
+    listput(hs, hash(n));
 
-    if(n != 1, listput(hs, hash(n)));
+    past = n; n = js(n, base);
+  );
+
+  return(if(which, hs, #hs - #Set(hs)));
+};
+
+juggler_hashcp(hash, which, seed, base = 2) = {
+  my(
+    n = seed, past = 0,
+    hs = List()
+  );
+
+  while(n != past,
+    listput(hs, hash(past, n));
+
+    past = n; n = js(n, base);
   );
 
   return(if(which, hs, #hs - #Set(hs)));
