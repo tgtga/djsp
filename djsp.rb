@@ -6,8 +6,7 @@ module DJSP
   module C
     extend FFI::Library
     ffi_lib "c"
-    # ffi_lib "./build/libdjsp.so"
-    ffi_lib ENV["lib"]
+    ffi_lib ENV["lib"] || "./build/libdjsp.so"
 
     # step
 

@@ -12,7 +12,8 @@ CFLAGS := \
 	-std=c99 \
   -O3 -march=native -mtune=native \
   -Wall -Wextra -Wpedantic \
-	-g
+	-g \
+	# -DRBD -DRAD -DRBU -DRAU
 CFLAGS += $(WHATEVER)
 LDFLAGS := -lgmp
 
