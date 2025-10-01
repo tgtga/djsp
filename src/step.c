@@ -13,7 +13,7 @@ static void step_big_1_2(
   if (step_realloc_before_down)
     while (x[limbs - 1] == 0)
       --limbs;
-  
+
   mp_size_t root_limbs = (limbs + 1) >> 1;
   mp_limb_t *root = malloc(sizeof(*root) * root_limbs);
 
@@ -36,7 +36,7 @@ static void step_big_3_2(
   if (step_realloc_before_up)
     while (x[limbs - 1] == 0)
       --limbs;
-  
+
   // square = v ** 2
   mp_size_t square_limbs = limbs * 2;
   mp_limb_t *square = malloc(sizeof(*square) * square_limbs);
@@ -103,7 +103,7 @@ static void step_big_n_n(
                                               \
   step_big_n_n(v, base, (power));             \
                                               \
-  if (step_realloc_before_ ## direction)      \
+  if (step_realloc_after_ ## direction)       \
     mpz_realloc2(v, mpz_sizeinbase(v, base)); \
 } while (0)
 

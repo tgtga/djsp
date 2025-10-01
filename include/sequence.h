@@ -3,6 +3,7 @@
 
 #include <gmp.h>
 #include <stdbool.h>
+#include <omp.h>
 #include "logging.h"
 #include "intmath.h"
 #include "defs.h"
@@ -12,5 +13,6 @@ typedef void (*hwm_callback)(u64, u64, u64);
 
 void sequence(   u64, u64, u64, u64, bool, hwm_callback);
 void sequence_rootopt(u64, u64, u64, bool, hwm_callback);
+void sequence_rootopt_p(u64, u64, hwm_callback);
 
 #endif
