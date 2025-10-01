@@ -11,9 +11,10 @@ CC := clang
 CFLAGS := \
 	-std=c99 \
   -O3 -march=native -mtune=native \
-  -Wall -Wextra -Wpedantic \
-	-g
-LDFLAGS := -lgmp
+  -Wall -Wextra -Wpedantic -Wno-static-in-inline \
+  -fopenmp=libiomp5 \
+	-gdwarf-4
+LDFLAGS := -lgmp -fopenmp=libiomp5
 
 # ifdef STATIC
 # LIBRARY   := libdjsp.a
@@ -43,7 +44,7 @@ clean:
 # $(BUILD_DIR)/libdjsp.a: $(OBJ)
 # 	ar rcs $@ $?
 $(BUILD_DIR)/libdjsp.so: $(OBJ)
-	$(CC) -shared -lgmp -o $@ $^
+	$(CC) -shared $(LDFLAGS) -o $@ $^
 
 $(BUILD_DIR)/$(OBJ_DIR)/%.o: $(OBJ_DIR)/%.c | $(BUILD_DIR)/$(OBJ_DIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(OBJ_FLAGS) -c -o $@ $<
