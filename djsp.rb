@@ -104,9 +104,12 @@ module DJSP
 
     def sequence range = (1..), base: nil, optimize: [], alert: nil, &hwm
       unless range.is_a? Enumerator::ArithmeticSequence
-        range = range.step
-        raise TypeError, "`range` must be or be able to be converted to an Enumerator::ArithmeticSequence" \
-          unless range.is_a? Enumerator::ArithmeticSequence
+      	begin
+      		range = range.step
+      		raise unless range.is_a? Enumerator::ArithmeticSequence
+      	rescue
+        	raise TypeError, "`range` must be or be able to be converted to an Enumerator::ArithmeticSequence"
+        end
       end
 
       left = range.begin || 1

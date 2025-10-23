@@ -15,9 +15,65 @@ size_t ssol = 0;
 #define PRINT_STEP_INT_N(base) PRINT_STEP(base, base_length(v_int, base))
 #define PRINT_STEP_BIG(base)   PRINT_STEP(base, mpz_sizeinbase(v_big, base))
 
-u64 oneshot_2(
-  u64 seed /*,
-  memo_callback memo */
+u64 oneshot_2(u64 seed) {
+  if (seed == 1)
+    return 0;
+
+  u64 v_int = seed;
+  mp_limb_t *vp = NULL; mp_size_t vl;
+  u64 count = 0, additional;
+
+  goto process_int;
+
+  process_big: ++count;
+
+  PRINT_STEP(2, mpn_sizeinbase(vp, vl, 2));
+
+  step_big_2(&vp, &vl, &vp, &vl);
+
+  mpz_t temp_ulong; temp_ulong->_mp_d = vp; temp_ulong->_mp_size = vl;
+  if (!mpz_fits_ulong_p(temp_ulong))
+    goto process_big;
+
+  v_int = mpz_get_ui(temp_ulong);
+
+  process_int: ++count;
+
+  PRINT_STEP_INT_2();
+
+  if (v_int & 1) {
+    if (v_int > 2642245UL) {
+      // v_big = floor(v_int^(3/2))
+      mpz_t temp; mpz_init(temp);
+      mpz_ui_pow_ui(temp, v_int, 3UL);
+      mpz_sqrt(temp, temp);
+
+      // first time through, vp will be null
+      // every other free should be guaranteed safe though
+      // if (vp) free(vp);
+      vp = temp->_mp_d; vl = temp->_mp_size;
+      while (vp[vl - 1] == 0)
+        --vl;
+
+      goto process_big;
+    } else {
+      v_int = isqrt(v_int * v_int * v_int);
+    }
+  } else {
+    v_int = isqrt(v_int);
+  }
+
+  if (v_int > 1)
+    goto process_int;
+
+  free(vp);
+
+  return count;
+}
+
+u64 oneshot_2_memo(
+  u64 seed,
+  memo_callback memo
 ) {
   if (seed == 1)
     return 0;
@@ -32,12 +88,9 @@ u64 oneshot_2(
 
   PRINT_STEP(2, mpn_sizeinbase(vp, vl, 2));
 
-  /*
-  if (memo)
-    if ((additional = memo(count, 0, v_big)))
-      return (count - 1) + additional;
-  */
-  
+  if (memo && (additional = memo(0, vp, vl)))
+		return (count - 1) + additional;
+
   step_big_2(&vp, &vl, &vp, &vl);
 
   mpz_t temp_ulong; temp_ulong->_mp_d = vp; temp_ulong->_mp_size = vl;
@@ -50,11 +103,8 @@ u64 oneshot_2(
 
   PRINT_STEP_INT_2();
 
-  /*
-  if (memo)
-    if ((additional = memo(count, v_int, NULL)))
-      return (count - 1) + additional;
-  */
+  if (memo && (additional = memo(v_int, NULL, 0)))
+    return (count - 1) + additional;
 
   if (v_int & 1) {
     if (v_int > 2642245UL) {
