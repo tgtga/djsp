@@ -73,7 +73,7 @@ u64 oneshot_2(u64 seed) {
 
 u64 oneshot_2_memo(
   u64 seed,
-  memo_callback memo
+  memo_read_callback memo
 ) {
   if (seed == 1)
     return 0;
@@ -88,8 +88,8 @@ u64 oneshot_2_memo(
 
   PRINT_STEP(2, mpn_sizeinbase(vp, vl, 2));
 
-  if (memo && (additional = memo(0, vp, vl)))
-		return (count - 1) + additional;
+  // if (memo && (additional = memo(0, vp, vl)))
+	// 	return (count - 1) + additional;
 
   step_big_2(&vp, &vl, &vp, &vl);
 
@@ -103,7 +103,8 @@ u64 oneshot_2_memo(
 
   PRINT_STEP_INT_2();
 
-  if (memo && (additional = memo(v_int, NULL, 0)))
+  // if (memo && (additional = memo(v_int, NULL, 0)))
+  if (memo && (additional = memo(v_int)))
     return (count - 1) + additional;
 
   if (v_int & 1) {

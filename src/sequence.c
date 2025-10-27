@@ -91,6 +91,7 @@ typedef struct {
 
 void sequence_rootopt_p(
   u64 start, u64 end,
+  memo_read_callback memo_read, memo_write_callback memo_write,
   hwm_callback found_hwm
 ) {
   u64 hwm = 6, hwm_index = 2;
@@ -103,12 +104,14 @@ void sequence_rootopt_p(
 	unsigned char *done = calloc(strides + 1, sizeof(*done)); done[0] = done[1] = done[2] = 1;
 	size_t watching = 3;
 
-  if (found_hwm) found_hwm(1, 1, 2); djsp_message("A(1) @ 2 = 1\n");
-  if (found_hwm) found_hwm(2, 6, 3); djsp_message("A(2) @ 3 = 6\n");
+  djsp_message("A(1) @ 2 = 1\n"); if (found_hwm) found_hwm(1, 1, 2);
+  djsp_message("A(2) @ 3 = 6\n"); if (found_hwm) found_hwm(2, 6, 3);
 
 # pragma omp parallel for
   for (u64 stride = 3; stride <= strides; ++stride) {
-  	double wtime = omp_get_wtime();
+#		ifdef TIME
+	  	double wtime = omp_get_wtime();
+#		endif
 		u64
 			sqr = stride * stride, next = (stride + 1) * (stride + 1),
 			even = sqr + (stride & 1),
@@ -136,6 +139,7 @@ void sequence_rootopt_p(
 					++hwm_index;
 
 	      	djsp_message("A(%lu) @ %lu = %lu (true!)\n", hwm_index, where, hwm);
+	      	if (found_hwm) found_hwm(hwm_index, hwm, where);
 	      }
 			}
 	  }
@@ -180,25 +184,25 @@ void sequence_rootopt_p(
 			results[result_count++] = (hwm_result){ what, where };         \
 		} while (0)
 
+
+
 		hwm_result even_hwmr = { 0 };
-    r = oneshot_2(even);
+    r = oneshot_2_memo(even, memo_read);
+    if (memo_write) memo_write(even, r);
     if (r > hwm) {
-      if (found_hwm) {
-      	even_hwmr = (hwm_result){ r, even };
-      	djsp_message("A(%lu) @ %lu = %lu (potential)\n", hwm_index, even, r);
-			}
+    	even_hwmr = (hwm_result){ r, even };
+    	djsp_message("A(%lu) @ %lu = %lu (potential)\n", hwm_index, even, r);
     }
 
 		if (even == lower)
 			PUSH_RESULT(even_hwmr.what, even_hwmr.where);
 
     for (u64 i = lower; i <= upper; i += 2) {
-      r = oneshot_2(i);
+      r = oneshot_2_memo(i, memo_read);
+      if (memo_write) memo_write(i, r);
       if (r > hwm) {
-        if (found_hwm) {
-        	PUSH_RESULT(r, i);
-        	djsp_message("A(%lu) @ %lu = %lu (potential)\n", hwm_index, i, r);
-        }
+      	PUSH_RESULT(r, i);
+      	djsp_message("A(%lu) @ %lu = %lu (potential)\n", hwm_index, i, r);
       }
     }
 
@@ -211,8 +215,10 @@ void sequence_rootopt_p(
 
 
 
-		wtime = omp_get_wtime() - wtime;
-		fprintf(stderr, "finished stride #%lu, %fs\n", stride, wtime);
+#		ifdef TIME
+			wtime = omp_get_wtime() - wtime;
+			fprintf(stderr, "finished stride #%lu, %fs\n", stride, wtime);
+#		endif
   }
 
   free(finished_strides);
