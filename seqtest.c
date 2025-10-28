@@ -56,9 +56,9 @@ _Noreturn void end() {
 			b[i] = 2 * i + 1;
 #		endif
 
-  u64 **pa = malloc(sizeof(*pa) * (MEMOSIZE + 1));
-  for (int i = 0; i <= MEMOSIZE; ++i)
-  	pa[i] = &a[i];
+	u64 **pa = malloc(sizeof(*pa) * (MEMOSIZE + 1));
+	for (int i = 0; i <= MEMOSIZE; ++i)
+		pa[i] = &a[i];
 
 	qsort(pa, MEMOSIZE + 1, sizeof(*pa), compare);
 
@@ -80,9 +80,10 @@ _Noreturn void end() {
   }
 
 	printf("%d highest occurences were:\n", HIGHEST);
-  for (int i = 0; i < HIGHEST; ++i)
-  	printf("#%lu: %lux @ %lu (len. %lu)\n", i + 1, a[i], b[i], oneshot_2(b[i]));
+	for (int i = 0; i < HIGHEST; ++i)
+		printf("#%lu: %lux @ %lu (len. %lu)\n", i + 1, a[i], b[i], oneshot_2(b[i]));
 
+	free(pa);
 	free(b);
 	free(counts);
 	free(memo);

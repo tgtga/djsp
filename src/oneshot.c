@@ -21,7 +21,7 @@ u64 oneshot_2(u64 seed) {
 
   u64 v_int = seed;
   mp_limb_t *vp = NULL; mp_size_t vl;
-  u64 count = 0, additional;
+  u64 count = 0;
 
   goto process_int;
 
@@ -36,6 +36,7 @@ u64 oneshot_2(u64 seed) {
     goto process_big;
 
   v_int = mpz_get_ui(temp_ulong);
+  free(vp);
 
   process_int: ++count;
 
@@ -65,8 +66,6 @@ u64 oneshot_2(u64 seed) {
 
   if (v_int > 1)
     goto process_int;
-
-  free(vp);
 
   return count;
 }
@@ -98,6 +97,7 @@ u64 oneshot_2_memo(
     goto process_big;
 
   v_int = mpz_get_ui(temp_ulong);
+	free(vp);
 
   process_int: ++count;
 
@@ -132,8 +132,6 @@ u64 oneshot_2_memo(
   if (v_int > 1)
     goto process_int;
 
-  free(vp);
-
   return count;
 }
 
@@ -144,7 +142,7 @@ u64 oneshot_n(
 ) {
   u64 v_int = seed;
   mpz_t v_big; mpz_init(v_big);
-  u64 count = 0, additional;
+  u64 count = 0;
 
   u64 past = 0;
   const u32 threshold = nthroot((u64)-1, base + 1);

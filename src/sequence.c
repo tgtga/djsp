@@ -84,11 +84,6 @@ typedef struct {
 	u64 what, where;
 } hwm_result;
 
-typedef struct {
-	hwm_result *hwms;
-	size_t hwm_count;
-} stride_result;
-
 void sequence_rootopt_p(
   u64 start, u64 end,
   memo_read_callback memo_read, memo_write_callback memo_write,
@@ -100,7 +95,7 @@ void sequence_rootopt_p(
   // worst case scenario more values are computed than what was asked for
   u64 strides = isqrt(end); // u64 n = 4;
 
-	stride_result *finished_strides = malloc(sizeof(*finished_strides) * (strides + 1));
+	hwm_result *finished_strides = malloc(sizeof(*finished_strides) * (strides + 1));
 	unsigned char *done = calloc(strides + 1, sizeof(*done)); done[0] = done[1] = done[2] = 1;
 	size_t watching = 3;
 
@@ -125,93 +120,53 @@ void sequence_rootopt_p(
 
 
 
-		for (; done[watching]; ++watching) {
-			stride_result sr = finished_strides[watching];
-			// fprintf(stderr, "indexing stride #%lu (.hwms = %p, .hwm_count = %lu)\n", watching, (void *)sr.hwms, sr.hwm_count);
+		hwm_result result = { 0 };
 
-			for (size_t k = 0; k < sr.hwm_count; ++k) {
-				hwm_result chwm = sr.hwms[k];
-				u64 what = chwm.what, where = chwm.where;
-				// fprintf(stderr, "what = %lu, where = %lu\n", what, where);
-
-				if (what > hwm) {
-					hwm = what;
-					++hwm_index;
-
-	      	djsp_message("A(%lu) @ %lu = %lu (true!)\n", hwm_index, where, hwm);
-	      	if (found_hwm) found_hwm(hwm_index, hwm, where);
-	      }
-			}
-	  }
-
-
-
-		hwm_result *results = NULL;
-		size_t result_count = 0, result_alloc = 0;
-
-		/*
-#   define PUSH_RESULT(what, where) do {                               \
-			if (stride == watching) {                                        \
-				hwm = what;                                                    \
-				++hwm_index;                                                   \
-				djsp_message(                                                  \
-					"A(%lu) @ %lu = %lu (true! indexing skipped)\n",             \
-					hwm_index, where, hwm                                        \
-				);                                                             \
-			} else {                                                         \
-				if (results == NULL) {                                         \
-					results = malloc(sizeof(*results) * 1);                      \
-					result_alloc = 1;                                            \
-				}                                                              \
-				if (result_count >= result_alloc) {                            \
-					result_alloc = (result_alloc + 1) * 3 / 2;                   \
-					results = realloc(results, sizeof(*results) * result_alloc); \
-				}                                                              \
-				results[result_count++] = (hwm_result){ what, where };         \
-			}                                                                \
-		} while (0)
-		*/
-
-#   define PUSH_RESULT(what, where) do {                             \
-			if (results == NULL) {                                         \
-				results = malloc(sizeof(*results) * 1);                      \
-				result_alloc = 1;                                            \
-			}                                                              \
-			if (result_count >= result_alloc) {                            \
-				result_alloc = (result_alloc + 1) * 3 / 2;                   \
-				results = realloc(results, sizeof(*results) * result_alloc); \
-			}                                                              \
-			results[result_count++] = (hwm_result){ what, where };         \
+#		define RESULT(where_, what_) do {                \
+			if ((what_) > hwm && (what_) > result.what) {  \
+				result.what = (what_);                       \
+				result.where = (where_);                     \
+      	djsp_message(                                \
+      		"A(%lu) @ %lu = %lu (potential)\n",        \
+      		hwm_index, (where_), (what_)               \
+      	);                                           \
+			}                                              \
 		} while (0)
 
 
 
-		hwm_result even_hwmr = { 0 };
-    r = oneshot_2_memo(even, memo_read);
-    if (memo_write) memo_write(even, r);
-    if (r > hwm) {
-    	even_hwmr = (hwm_result){ r, even };
-    	djsp_message("A(%lu) @ %lu = %lu (potential)\n", hwm_index, even, r);
-    }
+		u64 even_r = oneshot_2_memo(even, memo_read);
+    if (memo_write) memo_write(even, even_r);
 
 		if (even == lower)
-			PUSH_RESULT(even_hwmr.what, even_hwmr.where);
+			RESULT(even, even_r);
 
     for (u64 i = lower; i <= upper; i += 2) {
       r = oneshot_2_memo(i, memo_read);
       if (memo_write) memo_write(i, r);
-      if (r > hwm) {
-      	PUSH_RESULT(r, i);
-      	djsp_message("A(%lu) @ %lu = %lu (potential)\n", hwm_index, i, r);
-      }
+     	RESULT(i, r);
     }
 
     if (even != lower)
-    	PUSH_RESULT(even_hwmr.what, even_hwmr.where);
+    	RESULT(even, even_r);
 
-		if (results)
-			finished_strides[stride] = (stride_result){ results, result_count };
+
+
+		finished_strides[stride] = result;
 		done[stride] = 1;
+
+		for (; watching <= strides && done[watching]; ++watching) {
+			hwm_result chwm = finished_strides[watching];
+			u64 what = chwm.what, where = chwm.where;
+
+			if (what > hwm) {
+				hwm = what;
+				++hwm_index;
+
+      	djsp_message("A(%lu) @ %lu = %lu (true!)\n", hwm_index, where, hwm);
+      	if (found_hwm) found_hwm(hwm_index, hwm, where);
+			}
+	  }
 
 
 
@@ -219,7 +174,8 @@ void sequence_rootopt_p(
 			wtime = omp_get_wtime() - wtime;
 			fprintf(stderr, "finished stride #%lu, %fs\n", stride, wtime);
 #		endif
-  }
+	  }
 
   free(finished_strides);
+  free(done);
 }
