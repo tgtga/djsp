@@ -1,5 +1,6 @@
 #include "include/sequence.h"
 #include <signal.h>
+#include <sys/time.h>
 
 #ifndef UPTO
 #	define UPTO 100000000
@@ -92,6 +93,12 @@ _Noreturn void end() {
 	exit(0);
 }
 
+double gtod_now() {
+	struct timeval timeval;
+	gettimeofday(&timeval, NULL);
+	return timeval.tv_sec + timeval.tv_usec * 0.000001;
+}
+
 int main(void) {
 	signal(SIGINT, end);
 
@@ -105,6 +112,9 @@ int main(void) {
 	counts = calloc(MEMOSIZE + 1,  sizeof(*counts));
 # endif
 
+	clock_t user_tic = clock(), user_toc;
+	double real_tic = gtod_now(), real_toc;
+
 	sequence_rootopt_p(
 		1, UPTO,
 #		if defined(S)
@@ -113,6 +123,17 @@ int main(void) {
 			memo_read_o, memo_write_o,
 #		endif
 		NULL
+	);
+
+	user_toc = clock(); real_toc = gtod_now();
+	double
+		user_elapsed = (double)(user_toc - user_tic) / CLOCKS_PER_SEC,
+		real_elapsed = (double)(real_toc - real_tic);
+	printf(
+		"user: %fs\n"
+		"real: %fs\n"
+		"r.  : %f\n",
+		user_elapsed, real_elapsed, real_elapsed / user_elapsed
 	);
 
 	end();

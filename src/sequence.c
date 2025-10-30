@@ -104,9 +104,9 @@ void sequence_rootopt_p(
 
 # pragma omp parallel for
   for (u64 stride = 3; stride <= strides; ++stride) {
-#		ifdef TIME
-	  	double wtime = omp_get_wtime();
-#		endif
+// #		ifdef TIME
+// 	  	double wtime = omp_get_wtime();
+// #		endif
 		u64
 			sqr = stride * stride, next = (stride + 1) * (stride + 1),
 			even = sqr + (stride & 1),
@@ -122,15 +122,33 @@ void sequence_rootopt_p(
 
 		hwm_result result = { 0 };
 
-#		define RESULT(where_, what_) do {                \
-			if ((what_) > hwm && (what_) > result.what) {  \
-				result.what = (what_);                       \
-				result.where = (where_);                     \
-      	djsp_message(                                \
-      		"A(%lu) @ %lu = %lu (potential)\n",        \
-      		hwm_index, (where_), (what_)               \
-      	);                                           \
-			}                                              \
+#		define FOUND(where_, what_, type_) do {              \
+			hwm = (what_);                                     \
+			_Pragma("omp atomic") ++hwm_index;                 \
+			djsp_message(                                      \
+				"(thread %2d) A(%lu) @ %lu = %lu (" type_ ")\n", \
+				omp_get_thread_num(),                            \
+				hwm_index, (where_), hwm                         \
+			);                                                 \
+			if (found_hwm)                                     \
+				found_hwm(hwm_index, hwm, (where_));             \
+		} while (0)
+
+#		define RESULT(where_, what_) do {                      \
+			if (watching == stride && (what_) > hwm) {           \
+				FOUND(                                             \
+					(where_), (what_),                               \
+					"true! skipped potential"                        \
+				);                                                 \
+			} else if ((what_) > hwm && (what_) > result.what) { \
+				result.what = (what_);                             \
+				result.where = (where_);                           \
+      	djsp_message(                                      \
+      		"(thread %2d) A(%lu) @ %lu = %lu (potential)\n", \
+      		omp_get_thread_num(),                            \
+      		hwm_index, (where_), (what_)                     \
+      	);                                                 \
+			}                                                    \
 		} while (0)
 
 
@@ -152,28 +170,29 @@ void sequence_rootopt_p(
 
 
 
-		finished_strides[stride] = result;
 		done[stride] = 1;
+		if (watching == stride)
+			++watching;
+		else
+			finished_strides[stride] = result;
 
 		for (; watching <= strides && done[watching]; ++watching) {
 			hwm_result chwm = finished_strides[watching];
 			u64 what = chwm.what, where = chwm.where;
 
-			if (what > hwm) {
-				hwm = what;
-				++hwm_index;
-
-      	djsp_message("A(%lu) @ %lu = %lu (true!)\n", hwm_index, where, hwm);
-      	if (found_hwm) found_hwm(hwm_index, hwm, where);
-			}
+			if (what > hwm)
+				FOUND(where, what, "true!");
 	  }
 
+#		undef FOUND
+#		undef RESULT
 
 
-#		ifdef TIME
-			wtime = omp_get_wtime() - wtime;
-			fprintf(stderr, "finished stride #%lu, %fs\n", stride, wtime);
-#		endif
+
+// #		ifdef TIME
+// 			wtime = omp_get_wtime() - wtime;
+// 			fprintf(stderr, "finished stride #%lu, %fs\n", stride, wtime);
+// #		endif
 	  }
 
   free(finished_strides);
