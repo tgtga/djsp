@@ -16,7 +16,18 @@ void set_up_log(int fd) {
   setvbuf(log_file, NULL, _IOLBF, 0);
 }
 */
-void set_up_log(const char *path) {
+
+void handler(int dummy) {
+	(void)dummy;
+
+	exit(0);
+}
+
+void setup(void) {
+	signal(SIGINT, handler);
+}
+
+void set_log(const char *path) {
   if (path == NULL) {
     log_file = NULL;
     return;
@@ -40,10 +51,10 @@ void djsp_message(char *format, ...) {
   size_t size = sizeof(ts);
   int off = 0;
 
-  off = strftime(ts, size, "%FT%T", local); // same as "%Y-%m-%dT%H:%M:%S" 
+  off = strftime(ts, size, "%FT%T", local); // same as "%Y-%m-%dT%H:%M:%S"
   off += snprintf(ts + off, size - off, ".%03ld", tp.tv_nsec / 1000000);
   off += strftime(ts + off, size - off, "%z", local);
-  
+
   va_list args_out; va_start(args_out, format);
 
   if (log_file) {

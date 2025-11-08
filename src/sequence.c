@@ -1,14 +1,16 @@
 #include "../include/sequence.h"
 
 void sequence(
-  u64 base,
-  u64 start, u64 end, u64 step, bool endless,
-  // memo_callback memo,
+	u64 base,
+  u64 start, u64 end,
+  memo_read_callback memo_read, memo_write_callback memo_write,
   hwm_callback found_hwm
 ) {
+	(void)memo_read; (void)memo_write;
+
   u64 hwm = 0, hwm_index = 0;
 
-  for (u64 i = start; endless || i < end; i += step) {
+  for (u64 i = start; i < end; ++i) {
     u64 r = base ? oneshot_n(i, base) : oneshot_2(i);
     if (r > hwm) {
       hwm = r; ++hwm_index;
@@ -23,32 +25,15 @@ void sequence(
   }
 }
 
-void sequence_alert(
-  u64 base,
-  u64 start, u64 end, u64 step, bool endless,
-  u64 alert,
-  // memo_callback memo,
+void sequence_2_rootopt(
+  u64 start, u64 end,
+  memo_read_callback memo_read, memo_write_callback memo_write,
   hwm_callback found_hwm
 ) {
-  u64 hwm = 0, hwm_index = 0;
+	(void)memo_read; (void)memo_write;
 
-  for (u64 i = start, bound; endless || i < end; ) {
-    for (bound = i + alert; i < bound; i += step) {
-      u64 r = base ? oneshot_n(i, base) : oneshot_2(i);
-      if (r > hwm) {
-        hwm = r; ++hwm_index;
-        if (found_hwm) found_hwm(hwm_index, hwm, i);
-      }
-    }
-    djsp_message("finished %lu\n", bound);
-  }
-}
+	fprintf(stderr, "sequence_2_rootopt with %lu, %lu, %p, %p, %p\n", start, end, memo_read, memo_write, found_hwm);
 
-void sequence_rootopt(
-  u64 start, u64 end, u64 step, bool endless,
-  // memo_callback memo,
-  hwm_callback found_hwm
-) {
   u64 hwm = 6, hwm_index = 2;
 
   if (found_hwm) found_hwm(1, 1, 2); // djsp_message("A(1) @ 2 = 1\n");
@@ -84,11 +69,13 @@ typedef struct {
 	u64 what, where;
 } hwm_result;
 
-void sequence_rootopt_p(
+void sequence_2_p(
   u64 start, u64 end,
   memo_read_callback memo_read, memo_write_callback memo_write,
   hwm_callback found_hwm
 ) {
+	fprintf(stderr, "sequence_2_p with %lu, %lu, %p, %p, %p\n", start, end, memo_read, memo_write, found_hwm);
+
   u64 hwm = 6, hwm_index = 2;
 
   // strides is always a high estimate

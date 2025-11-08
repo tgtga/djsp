@@ -8,6 +8,7 @@
 #include <time.h>
 #include <stdarg.h>
 #include <time.h>
+#include <signal.h>
 
 #define BANNER(s) "========== " s " =========="
 

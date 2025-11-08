@@ -12,8 +12,8 @@
 typedef void (*hwm_callback)(u64, u64, u64);
 typedef void (*memo_write_callback)(u64, u64);
 
-void sequence(   u64, u64, u64, u64, bool, hwm_callback);
-void sequence_rootopt(u64, u64, u64, bool, hwm_callback);
-void sequence_rootopt_p(u64, u64, memo_read_callback, memo_write_callback, hwm_callback);
+void sequence          (u64, u64, u64, memo_read_callback, memo_write_callback, hwm_callback);
+void sequence_2_rootopt(     u64, u64, memo_read_callback, memo_write_callback, hwm_callback);
+void sequence_2_p      (     u64, u64, memo_read_callback, memo_write_callback, hwm_callback);
 
 #endif

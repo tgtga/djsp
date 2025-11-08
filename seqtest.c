@@ -3,7 +3,7 @@
 #include <sys/time.h>
 
 #ifndef UPTO
-#	define UPTO 100000000
+#	define UPTO 100000
 #endif
 #ifndef MEMOSIZE
 #	define MEMOSIZE 1000000
@@ -45,6 +45,10 @@ void memo_write_o(u64 where, u64 what) {
 int compare(const void *a, const void *b) {
 	int x = **(int **)a, y = **(int **)b;
 	return (x > y) ? -1 : ((x < y) ? +1 : 0);
+}
+
+void hwm(u64 index, u64 where, u64 what) {
+	printf("%lu, %lu, %lu\n", index, where, what);
 }
 
 _Noreturn void end() {
@@ -115,14 +119,16 @@ int main(void) {
 	clock_t user_tic = clock(), user_toc;
 	double real_tic = gtod_now(), real_toc;
 
-	sequence_rootopt_p(
+	sequence_2_p(
 		1, UPTO,
 #		if defined(S)
 			memo_read_s, memo_write_s,
 #		elif defined(O)
 			memo_read_o, memo_write_o,
+#		else
+			NULL, NULL,
 #		endif
-		NULL
+		hwm
 	);
 
 	user_toc = clock(); real_toc = gtod_now();

@@ -17,7 +17,8 @@ module DJSP
 
     # logging
     
-    attach_function :set_up_log, [:string], :void
+    attach_function :setup, [], :void
+    attach_function :set_log, [:string], :void
     attach_function :djsp_message, [:string, :varargs], :void
 
     # oneshot
@@ -31,10 +32,12 @@ module DJSP
 
     # sequence
 
+		callback :memo_read_callback, [:uint64], :uint64
+		callback :memo_write_callback, [*[:uint64] * 2], :void
     callback :hwm_callback, [*[:uint64] * 3], :void
-    attach_function :sequence, [:uint64, *[:uint64] * 3, :bool, :hwm_callback], :void
-    attach_function :sequence_alert, [:uint64, *[:uint64] * 3, :bool, :uint64, :hwm_callback], :void
-    attach_function :sequence_rootopt, [*[:uint64] * 3, :bool, :hwm_callback], :void
+    attach_function :sequence,           [:uint64, :uint64, :uint64, :memo_read_callback, :memo_write_callback, :hwm_callback], :void
+    attach_function :sequence_2_rootopt, [         :uint64, :uint64, :memo_read_callback, :memo_write_callback, :hwm_callback], :void
+    attach_function :sequence_2_p,       [         :uint64, :uint64, :memo_read_callback, :memo_write_callback, :hwm_callback], :void
   end
 
   public
@@ -44,7 +47,7 @@ module DJSP
   VERSION_PATCH = 0
   VERSION       = "1.0.0"
 
-  VALID_SEQUENCE_OPTIMIZATIONS = [:root]
+  VALID_SEQUENCE_OPTIMIZATIONS = [:root, :none]
 
   class << self
     def ssol; C::ssol; end
@@ -68,7 +71,7 @@ module DJSP
       # clear set log file
       if file.nil?
         @log = nil
-        C::set_up_log nil
+        C::set_log nil
         return
       end
 
@@ -102,7 +105,7 @@ module DJSP
       end
     end
 
-    def sequence range = (1..), base: nil, optimize: [], alert: nil, &hwm
+    def sequence range = (1..), base: nil, optimize: nil, alert: nil, &hwm
       unless range.is_a? Enumerator::ArithmeticSequence
       	begin
       		range = range.step
@@ -118,25 +121,29 @@ module DJSP
 
       base ||= 0
 
-      optimize = [optimize] if optimize.is_a?(Symbol) || optimize.is_a?(String)
-      optimize = optimize.map &:to_sym
-      raise ArgumentError, "the only valid optimizations are: #{VALID_SEQUENCE_OPTIMIZATIONS.join ?,}" \
-        unless (optimize - VALID_SEQUENCE_OPTIMIZATIONS).empty?
+			unless optimize.nil?
+		    optimize = optimize.to_sym
+		    raise ArgumentError, "the only valid optimizations are: #{VALID_SEQUENCE_OPTIMIZATIONS.join ", "}" \
+		      unless VALID_SEQUENCE_OPTIMIZATIONS.include? optimize
+			end
 
       unless block_given?
         out = {}
         hwm = ->(index, mark, where){ out[where] = mark }
       end
 
-      if optimize.include? :root
+      if optimize == :root
         raise RangeError, "root optimization not implemented for bases other than 2" \
           if base > 2
 
-        C::sequence_rootopt left, right, step, endless, hwm
-      elsif alert
-        C::sequence_alert base, left, right, step, endless, alert, hwm
+				STDERR.puts "sequence_2_rootopt with [#{left}, #{right}, nil, nil, #{hwm}]"
+        C::sequence_2_rootopt left, right, nil, nil, hwm
+      elsif optimize == :none || base > 2
+				STDERR.puts "sequence with [#{base}, #{left}, #{right}, nil, nil, #{hwm}]"
+        C::sequence base, left, right, nil, nil, hwm
       else
-        C::sequence base, left, right, step, endless, hwm
+				STDERR.puts "sequence_2_p with [#{left}, #{right}, nil, nil, #{hwm}]"
+				C::sequence_2_p left, right, nil, nil, hwm
       end
 
       out unless block_given?
@@ -161,6 +168,8 @@ module DJSP
       memo.sort_by {|k, _| k }.to_h
     end
   end
+
+  C::setup
 end
 
 if $0 == __FILE__
