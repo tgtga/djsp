@@ -112,15 +112,15 @@ void sequence_2_p(
 #		define FOUND(where_, what_, type_) do {              \
 			hwm = (what_);                                     \
 			_Pragma("omp atomic") ++hwm_index;                 \
-			_Pragma("omp critical") djsp_message(                                      \
+			djsp_message(                                      \
 				"(thread %2d) A(%lu) @ %lu = %lu (" type_ ")\n", \
 				omp_get_thread_num(),                            \
 				hwm_index, (where_), hwm                         \
 			);                                                 \
 			if (found_hwm) {                                  \
-				_Pragma("omp critical") fprintf(stderr, "c entering found_hwm (%lu, %lu, %lu)\n", hwm_index, hwm, (where_)); \
-				_Pragma("omp critical") found_hwm(hwm_index, hwm, (where_));             \
-				_Pragma("omp critical") fprintf(stderr, "c exiting found_hwm (%lu, %lu, %lu)\n", hwm_index, hwm, (where_)); \
+				fprintf(stderr, "(thread %2d) c entering found_hwm (%lu, %lu, %lu)\n", omp_get_thread_num(), hwm_index, hwm, (where_)); \
+				found_hwm(hwm_index, hwm, (where_));             \
+				fprintf(stderr, "(thread %2d) c exiting found_hwm (%lu, %lu, %lu)\n", omp_get_thread_num(), hwm_index, hwm, (where_)); \
 			} \
 		} while (0)
 
@@ -133,7 +133,7 @@ void sequence_2_p(
 			} else if ((what_) > hwm && (what_) > result.what) { \
 				result.what = (what_);                             \
 				result.where = (where_);                           \
-      	_Pragma("omp critical") djsp_message(                                      \
+      	djsp_message(                                      \
       		"(thread %2d) A(%lu) @ %lu = %lu (potential)\n", \
       		omp_get_thread_num(),                            \
       		hwm_index, (where_), (what_)                     \
@@ -162,20 +162,21 @@ void sequence_2_p(
 
 		done[stride] = 1;
 		if (watching == stride)
-			++watching;
+			_Pragma("omp atomic") ++watching;
 		else
 			finished_strides[stride] = result;
 
-		for (; watching <= strides && done[watching]; ++watching) {
+		while (watching <= strides && done[watching]) {
 			hwm_result chwm = finished_strides[watching];
 			u64 what = chwm.what, where = chwm.where;
 
 			if (what > hwm)
 				FOUND(where, what, "true!");
 
-			_Pragma("omp critical") fprintf(stderr, "thread %d (%lu -> %lu) finished\n", omp_get_thread_num(), lower, upper);
+			_Pragma("omp atomic") ++watching;
 	  }
 
+		fprintf(stderr, "thread %d (%lu -> %lu) finished\n", omp_get_thread_num(), lower, upper);
 #		undef FOUND
 #		undef RESULT
 
