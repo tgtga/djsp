@@ -115,9 +115,11 @@ module DJSP
         end
       end
 
-      left = range.begin || 1
-      (right, endless) = range.end ? [range.end, false] : [0, true]
-      step = range.step
+			raise "`range.step` must be 1" \
+				if range.step != 1
+
+      left  = range.begin ||  1
+      right = range.end   || -1
 
       base ||= 0
 

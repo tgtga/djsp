@@ -48,6 +48,7 @@ int compare(const void *a, const void *b) {
 }
 
 void hwm(u64 index, u64 where, u64 what) {
+	fprintf(stderr, "entered c block\n");
 	printf("%lu, %lu, %lu\n", index, where, what);
 }
 
