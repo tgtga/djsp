@@ -25,6 +25,8 @@ void handler(int dummy) {
 
 void setup(void) {
 	signal(SIGINT, handler);
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
 }
 
 void set_log(const char *path) {

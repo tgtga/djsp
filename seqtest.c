@@ -3,7 +3,7 @@
 #include <sys/time.h>
 
 #ifndef UPTO
-#	define UPTO 100000
+#	define UPTO 1000
 #endif
 #ifndef MEMOSIZE
 #	define MEMOSIZE 1000000

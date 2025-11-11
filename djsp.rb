@@ -127,9 +127,15 @@ module DJSP
 		      unless VALID_SEQUENCE_OPTIMIZATIONS.include? optimize
 			end
 
-      unless block_given?
+      if block_given?
+      	hwm = FFI::Function.new :void, [*[:uint64] * 3], hwm
+      else
         out = {}
-        hwm = ->(index, mark, where){ out[where] = mark }
+        hwm = FFI::Function.new(:void, [*[:uint64] * 3]) do |index, mark, where|
+        	STDERR.puts "ruby entering function (#{index}, #{mark}, #{where})"
+        	out[where] = mark
+        	STDERR.puts "ruby exiting function (#{index}, #{mark}, #{where})"
+        end
       end
 
       if optimize == :root
@@ -170,6 +176,7 @@ module DJSP
   end
 
   C::setup
+  freeze
 end
 
 if $0 == __FILE__
