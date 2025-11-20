@@ -3,7 +3,7 @@
 #include <sys/time.h>
 
 #ifndef UPTO
-#	define UPTO 1000
+#	define UPTO 25
 #endif
 #ifndef MEMOSIZE
 #	define MEMOSIZE 1000000
@@ -48,7 +48,7 @@ int compare(const void *a, const void *b) {
 }
 
 void hwm(u64 index, u64 where, u64 what) {
-	fprintf(stderr, "entered c block\n");
+	// fprintf(stderr, "entered c block\n");
 	printf("%lu, %lu, %lu\n", index, where, what);
 }
 

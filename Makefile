@@ -10,8 +10,8 @@ CC := clang
 # if you want to append to a variable set at invocation
 CFLAGS := \
 	-std=c99 \
-  -O0 -march=native -mtune=native \
-  -Wall -Wextra -Wpedantic -Wno-static-in-inline \
+  -O3 -march=native -mtune=native \
+  -Wall -Wextra -Wpedantic -Wno-static-in-inline -Wno-gnu-zero-variadic-macro-arguments \
   -fopenmp=libiomp5 \
 	-gdwarf-4
 LDFLAGS := -lgmp -fopenmp=libiomp5
