@@ -147,7 +147,7 @@ module DJSP
 				STDERR.puts "sequence_2_rootopt with [#{left}, #{right}, nil, nil, #{hwm}]"
         C::sequence_2_rootopt left, right, nil, nil, hwm
       elsif optimize == :none || base > 2
-				STDERR.puts "sequence with [#{base}, #{left}, #{right}, nil, nil, #{hwm}]"
+      	STDERR.puts "sequence with [#{base}, #{left}, #{right}, nil, nil, #{hwm}]"
         C::sequence base, left, right, nil, nil, hwm
       else
 				STDERR.puts "sequence_2_p with [#{left}, #{right}, nil, nil, #{hwm}]"

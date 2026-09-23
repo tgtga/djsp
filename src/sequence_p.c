@@ -3,137 +3,128 @@
 #ifndef SEQP_DEFS
 #	define SEQP_DEFS
 	typedef struct {
-		u64 what, where;
-	} hwm_result;
+		u64 *hwms, *wheres;
+		size_t len;
+	} chunk_result;
+
+#	define NUM_THREADS 12
 #endif
+
+#include <pthread.h>
+
+memo_read_callback memo_read;
+memo_write_callback memo_write;
+chunk_result *chunk_results;
+size_t chunk_results_len = 0;
+volatile u64 ghwm;
+u64 lowest_stride, strides; pthread_mutex_t ls_mutex;
+
+void * worker(void *id) {
+	while (1) {
+		// fprintf(stderr, "thread %lu: trying to lock...\n", (u64)id);
+		pthread_mutex_lock(&ls_mutex);
+		// fprintf(stderr, "thread %lu: got lock\n", (u64)id);
+
+		u64 stride = lowest_stride++;
+		if (stride > strides) {
+			fprintf(stderr, "thread %lu: GET OUT!!!\n", (u64)id);
+			pthread_mutex_unlock(&ls_mutex);
+			pthread_exit(NULL);
+		}
+
+		pthread_mutex_unlock(&ls_mutex);
+		// fprintf(stderr, "thread %lu: unlocked\n", (u64)id);
+
+		u64
+			sqr = stride * stride, next = (stride + 1) * (stride + 1),
+			even = sqr + (stride & 1),
+			lower = sqr + !(stride & 1),
+			upper = next - ((next & 1) + 1),
+			hwm, r;
+
+		fprintf(stderr, "thread %lu: %lu -> %lu, stride %lu\n", (u64)id, lower, upper, stride);
+
+		u64 *hwms = malloc(0);
+		u64 *wheres = malloc(0);
+		size_t len = 0;
+
+	#	define TRY_RESULT(where_, what_) do {                \
+			if ((what_) > hwm && (what_) > ghwm) {                               \
+				fprintf(stderr, "stride %lu found %lu @ %lu\n", stride, (where_), (what_)); \
+			\
+				hwm = (what_);                                   \
+	                                                       \
+				wheres = realloc(wheres, sizeof(*wheres) * (len + 1)); \
+				hwms = realloc(hwms, sizeof(*hwms) * (len + 1)); \
+				\
+				hwms[len] = hwm;                               \
+				wheres[len] = (where_); \
+				++len; \
+			}                                                   \
+		} while (0)
+
+		r = oneshot_2_memo(even, memo_read);
+		if (memo_write) memo_write(even, r);
+		TRY_RESULT(even, r);
+
+		for (u64 i = lower; i <= upper; i += 2) {
+			r = oneshot_2_memo(i, memo_read);
+			if (memo_write) memo_write(i, r);
+			TRY_RESULT(i, r);
+		}
+
+	#	undef TRY_RESULT
+
+		chunk_results[stride] = (chunk_result){ hwms, wheres, len };
+	}
+}
 
 void SEQP_NAME(
   u64 start, u64 end,
   memo_read_callback memo_read, memo_write_callback memo_write,
   hwm_callback found_hwm
 ) {
-
+	fprintf(stderr, "new\n");
 	fprintf(stderr, "sequence_2_p with %lu, %lu, %p, %p, %p\n", start, end, memo_read, memo_write, found_hwm);
 
-  u64 hwm = 6, hwm_index = 2;
+  ghwm = 6; u64 hwm_index = 2;
+  lowest_stride = 3; pthread_mutex_init(&ls_mutex, NULL);
 
   // strides is always a high estimate
   // worst case scenario more values are computed than what was asked for
-  const u64 strides = isqrt(end); // u64 n = 4;
+  strides = isqrt(end);
 
-	hwm_result *finished_strides = malloc(sizeof(*finished_strides) * (strides + 1));
-	unsigned char *done = calloc(strides + 1, sizeof(*done)); done[0] = done[1] = done[2] = 1;
-	size_t watching = 3;
+	pthread_t threads[NUM_THREADS];
+	chunk_results = malloc(sizeof(*chunk_results) * (strides + 1));
 
-  djsp_message("A(1) @ 2 = 1\n"); if (found_hwm) found_hwm(1, 1, 2);
-  djsp_message("A(2) @ 3 = 6\n"); if (found_hwm) found_hwm(2, 6, 3);
+  if (found_hwm) found_hwm(1, 1, 2);
+  if (found_hwm) found_hwm(2, 6, 3);
 
-# pragma omp parallel for \
-		num_threads(3) \
-		default(none) \
-		shared(stderr, hwm, hwm_index, watching, done, finished_strides) \
-		firstprivate(strides, end, found_hwm, memo_read, memo_write)
-  for (u64 stride = 3; stride <= strides; ++stride) {
-// #		ifdef TIME
-// 	  	double wtime = omp_get_wtime();
-// #		endif
-		u64
-			sqr = stride * stride, next = (stride + 1) * (stride + 1),
-			even = sqr + (stride & 1),
-			lower = sqr + !(stride & 1),
-			upper = next - ((next & 1) + 1),
-			r;
-    // fprintf(stderr, "stride #%lu: %lu -> %lu, condensing evens into %lu\n", stride, lower, upper, even);
+	for (int i = 0; i < NUM_THREADS; ++i)
+		pthread_create(threads + i, NULL, worker, (void *)i);
 
-		if (lower > end)
-	    fprintf(stderr, "OVERSHOT! %lu -> %lu, condensing evens into %lu\n", lower, upper, even);
+	for (int i = 0; i < NUM_THREADS; ++i)
+		pthread_join(threads[i], NULL);
 
+	for (u64 stride = 3; stride <= strides; ++stride) {
+		chunk_result result = chunk_results[stride];
+		u64 *hwms = result.hwms, *wheres = result.wheres;
+		size_t len = result.len;
 
-
-		hwm_result result = { 0 };
-
-#		define DEBUG(fmt_, ...) fprintf(stderr, "(thread %2d) " fmt_, omp_get_thread_num(), ##__VA_ARGS__)
-
-#		define FOUND(where_, what_, type_) do {              \
-			DEBUG("entering hwm set\n"); \
-			_Pragma("omp critical") { \
-				hwm = (what_);                                     \
-				++hwm_index;                 \
-			} \
-			DEBUG("finished hwm set, A(%lu) @ %lu = %lu (" type_ ")\n", hwm_index, (where_), hwm);                                                 \
-			if (found_hwm) {                                  \
-				DEBUG("entering found_hwm from c (%lu, %lu, %lu)\n", hwm_index, hwm, (where_)); \
-				found_hwm(hwm_index, hwm, (where_));             \
-				DEBUG("exiting found_hwm from c (%lu, %lu, %lu)\n", hwm_index, hwm, (where_)); \
-			} \
-		} while (0)
-
-#		define RESULT(where_, what_) do {                      \
-			if (watching == stride && (what_) > hwm) {           \
-				DEBUG("entering FOUND call in RESULT\n"); \
-				FOUND(                                             \
-					(where_), (what_),                               \
-					"true! skipped potential"                        \
-				);                                                 \
-				DEBUG("exiting FOUND call in RESULT\n"); \
-			} else if ((what_) > hwm && (what_) > result.what) { \
-				DEBUG("entering deferment block in RESULT\n"); \
-				result.what = (what_);                             \
-				result.where = (where_);                           \
-      	DEBUG("exiting deferment block in RESULT, A(%lu) @ %lu = %lu (potential)\n", hwm_index, (where_), (what_)); \
-			}                                                    \
-		} while (0)
-
-
-
-		u64 even_r = oneshot_2_memo(even, memo_read);
-    if (memo_write) memo_write(even, even_r);
-
-		if (even == lower)
-			RESULT(even, even_r);
-
-    for (u64 i = lower; i <= upper; i += 2) {
-      r = oneshot_2_memo(i, memo_read);
-      if (memo_write) memo_write(i, r);
-     	RESULT(i, r);
-    }
-
-    if (even != lower)
-    	RESULT(even, even_r);
-
-		DEBUG("big block finished\n");
-		_Pragma("omp critical") {
-			done[stride] = 1;
-			if (watching == stride)
-				++watching;
-			else
-				finished_strides[stride] = result;
+		for (size_t i = 0; i < len; ++i) {
+			u64 hwm = hwms[i], where = wheres[i];
+			if (hwm > ghwm) {
+				ghwm = hwm;
+				++hwm_index;
+				if (found_hwm) found_hwm(hwm_index, ghwm, where);
+			}
 		}
 
-		while (watching <= strides && done[watching]) {
-			hwm_result chwm = finished_strides[watching];
-			u64 what = chwm.what, where = chwm.where;
+		free(hwms);
+	}
 
-			if (what > hwm)
-				FOUND(where, what, "true!");
-
-			++watching;
-		}
-
-		DEBUG("(%lu -> %lu) finished\n", lower, upper);
-#		undef FOUND
-#		undef RESULT
-
-
-
-// #		ifdef TIME
-// 			wtime = omp_get_wtime() - wtime;
-// 			fprintf(stderr, "finished stride #%lu, %fs\n", stride, wtime);
-// #		endif
-	  }
-
-  free(finished_strides);
-  free(done);
+	free(chunk_results);
+	pthread_mutex_destroy(&ls_mutex);
 }
 
 #endif

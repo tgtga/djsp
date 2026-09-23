@@ -9,7 +9,7 @@ CC := clang
 # for the future: add 'override' at the beginning
 # if you want to append to a variable set at invocation
 CFLAGS := \
-	-std=c99 \
+	-std=gnu11 \
   -O3 -march=native -mtune=native \
   -Wall -Wextra -Wpedantic -Wno-static-in-inline -Wno-gnu-zero-variadic-macro-arguments \
   -fopenmp=libiomp5 \
