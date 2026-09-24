@@ -7,50 +7,64 @@
 		size_t len;
 	} chunk_result;
 
-#	define NUM_THREADS 12
+	typedef struct {
+		int id;
+		memo_read_callback memo_read; memo_write_callback memo_write;
+		chunk_result **chunk_results_p;
+		u64 * volatile hwm_p, *lowest_stride_p;
+		u64 strides;
+		pthread_mutex_t *ls_mutex_p; // lowest stride lock
+		pthread_mutex_t *ms_mutex_p; pthread_cond_t *ms_cond_p; // main signalling
+	} worker_args;
+
+#	define NUM_THREADS 16
 #endif
 
 #include <pthread.h>
+#include <unistd.h>
 
-memo_read_callback memo_read;
-memo_write_callback memo_write;
-chunk_result *chunk_results;
-size_t chunk_results_len = 0;
-volatile u64 ghwm;
-u64 lowest_stride, strides; pthread_mutex_t ls_mutex;
+void * worker(void *args_v) {
+	worker_args args = *(worker_args *)args_v;
 
-void * worker(void *id) {
+	int id = args.id;
+	memo_read_callback memo_read = args.memo_read; memo_write_callback memo_write = args.memo_write;
+	chunk_result **chunk_results_p = args.chunk_results_p;
+	u64 * volatile hwm_p = args.hwm_p, * volatile lowest_stride_p = args.lowest_stride_p;
+	u64 strides = args.strides;
+	pthread_mutex_t *ls_mutex_p = args.ls_mutex_p;
+	pthread_mutex_t *ms_mutex_p = args.ms_mutex_p; pthread_cond_t *ms_cond_p = args.ms_cond_p;
+
+	u64 hwm = *hwm_p;
+
 	while (1) {
-		// fprintf(stderr, "thread %lu: trying to lock...\n", (u64)id);
-		pthread_mutex_lock(&ls_mutex);
-		// fprintf(stderr, "thread %lu: got lock\n", (u64)id);
+		pthread_mutex_lock(ls_mutex_p);
 
-		u64 stride = lowest_stride++;
+		u64 stride = (*lowest_stride_p)++;
 		if (stride > strides) {
-			fprintf(stderr, "thread %lu: GET OUT!!!\n", (u64)id);
-			pthread_mutex_unlock(&ls_mutex);
+			fprintf(stderr, "thread %d: GET OUT!!!\n", id);
+			pthread_mutex_unlock(ls_mutex_p);
 			pthread_exit(NULL);
 		}
 
-		pthread_mutex_unlock(&ls_mutex);
-		// fprintf(stderr, "thread %lu: unlocked\n", (u64)id);
+		pthread_mutex_unlock(ls_mutex_p);
+
+		fprintf(stderr, "thread %d: entering stride %lu\n", id, stride);
 
 		u64
 			sqr = stride * stride, next = (stride + 1) * (stride + 1),
 			even = sqr + (stride & 1),
 			lower = sqr + !(stride & 1),
 			upper = next - ((next & 1) + 1),
-			hwm, r;
-
-		fprintf(stderr, "thread %lu: %lu -> %lu, stride %lu\n", (u64)id, lower, upper, stride);
+			r;
 
 		u64 *hwms = malloc(0);
 		u64 *wheres = malloc(0);
 		size_t len = 0;
 
+// 			fprintf(stderr, "thread %d: checking %lu @ %lu against %lu, g %lu\n", id, (what_), (where_), hwm, *hwm_p);
 	#	define TRY_RESULT(where_, what_) do {                \
-			if ((what_) > hwm && (what_) > ghwm) {                               \
-				fprintf(stderr, "stride %lu found %lu @ %lu\n", stride, (where_), (what_)); \
+			if ((what_) > hwm && (what_) > *hwm_p) {                               \
+				fprintf(stderr, "thread %d: stride %lu found %lu (against global %lu) @ %lu\n", id, stride, (what_), *hwm_p, (where_)); \
 			\
 				hwm = (what_);                                   \
 	                                                       \
@@ -75,7 +89,14 @@ void * worker(void *id) {
 
 	#	undef TRY_RESULT
 
-		chunk_results[stride] = (chunk_result){ hwms, wheres, len };
+		for (size_t i = 0; i < len; ++i)
+			fprintf(stderr, "thread %d: [%zu] = %lu, %lu\n", id, i, hwms[i], wheres[i]);
+
+		fprintf(stderr, "thread %d: setting chunk_results[%lu], hwms = %p, wheres = %p, len = %lu\n", id, stride, hwms, wheres, len);
+		(*chunk_results_p)[stride] = (chunk_result){ hwms, wheres, len };
+
+		pthread_mutex_unlock(ms_mutex_p);
+		pthread_cond_signal(ms_cond_p);
 	}
 }
 
@@ -84,10 +105,19 @@ void SEQP_NAME(
   memo_read_callback memo_read, memo_write_callback memo_write,
   hwm_callback found_hwm
 ) {
-	fprintf(stderr, "new\n");
+	chunk_result *chunk_results;
+	volatile u64 lowest_stride;
+	u64 strides;
+	pthread_mutex_t ls_mutex, ms_mutex; pthread_cond_t ms_cond;
+
+	pthread_mutex_init(&ls_mutex, NULL);
+	pthread_mutex_init(&ms_mutex, NULL);
+	pthread_cond_init(&ms_cond, NULL);
+
+	fprintf(stderr, "new 1\n");
 	fprintf(stderr, "sequence_2_p with %lu, %lu, %p, %p, %p\n", start, end, memo_read, memo_write, found_hwm);
 
-  ghwm = 6; u64 hwm_index = 2;
+  u64 hwm = 6; u64 hwm_index = 2; // ghwm = &hwm
   lowest_stride = 3; pthread_mutex_init(&ls_mutex, NULL);
 
   // strides is always a high estimate
@@ -95,33 +125,52 @@ void SEQP_NAME(
   strides = isqrt(end);
 
 	pthread_t threads[NUM_THREADS];
-	chunk_results = malloc(sizeof(*chunk_results) * (strides + 1));
+	chunk_results = calloc(strides + 1, sizeof(*chunk_results));
 
   if (found_hwm) found_hwm(1, 1, 2);
   if (found_hwm) found_hwm(2, 6, 3);
 
-	for (int i = 0; i < NUM_THREADS; ++i)
-		pthread_create(threads + i, NULL, worker, (void *)i);
+	printf("hwm = %lu, &hwm = %p\n", hwm, &hwm);
 
-	for (int i = 0; i < NUM_THREADS; ++i)
-		pthread_join(threads[i], NULL);
+	for (int i = 0; i < NUM_THREADS; ++i) {
+		worker_args args = {
+			.id = i,
+			.memo_read = memo_read, .memo_write = memo_write,
+			.chunk_results_p = &chunk_results,
+			.hwm_p = &hwm, .lowest_stride_p = &lowest_stride,
+			.strides = strides,
+			.ls_mutex_p = &ls_mutex,
+			.ms_mutex_p = &ms_mutex, .ms_cond_p = &ms_cond
+		};
+		pthread_create(threads + i, NULL, worker, (void *)&args);
+	}
 
 	for (u64 stride = 3; stride <= strides; ++stride) {
+		fprintf(stderr, "waiting for stride %lu\n", stride);
+		// pthread_mutex_lock(&ms_mutex);
+
+		while (chunk_results[stride].hwms == NULL) ;
+			// fprintf(stderr, "chunk_results[%lu]. hwms = %p, wheres = %p, len = %lu\n", stride, chunk_results[stride].hwms, chunk_results[stride].wheres, chunk_results[stride].len);
+			// pthread_cond_wait(&ms_cond, &ms_mutex);
+
 		chunk_result result = chunk_results[stride];
 		u64 *hwms = result.hwms, *wheres = result.wheres;
 		size_t len = result.len;
 
 		for (size_t i = 0; i < len; ++i) {
-			u64 hwm = hwms[i], where = wheres[i];
-			if (hwm > ghwm) {
-				ghwm = hwm;
+			u64 c = hwms[i], where = wheres[i];
+			if (c > hwm) {
+				hwm = c;
 				++hwm_index;
-				if (found_hwm) found_hwm(hwm_index, ghwm, where);
+				if (found_hwm) found_hwm(hwm_index, hwm, where);
 			}
 		}
 
 		free(hwms);
 	}
+
+	for (int i = 0; i < NUM_THREADS; ++i)
+		pthread_join(threads[i], NULL);
 
 	free(chunk_results);
 	pthread_mutex_destroy(&ls_mutex);
