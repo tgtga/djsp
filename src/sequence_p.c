@@ -14,7 +14,6 @@
 		u64 * volatile hwm_p, *lowest_stride_p;
 		u64 strides;
 		pthread_mutex_t *ls_mutex_p; // lowest stride lock
-		pthread_mutex_t *ms_mutex_p; pthread_cond_t *ms_cond_p; // main signalling
 	} worker_args;
 
 #	define NUM_THREADS 16
@@ -32,7 +31,6 @@ void * worker(void *args_v) {
 	u64 * volatile hwm_p = args.hwm_p, * volatile lowest_stride_p = args.lowest_stride_p;
 	u64 strides = args.strides;
 	pthread_mutex_t *ls_mutex_p = args.ls_mutex_p;
-	pthread_mutex_t *ms_mutex_p = args.ms_mutex_p; pthread_cond_t *ms_cond_p = args.ms_cond_p;
 
 	u64 hwm = *hwm_p;
 
@@ -48,8 +46,6 @@ void * worker(void *args_v) {
 
 		pthread_mutex_unlock(ls_mutex_p);
 
-		fprintf(stderr, "thread %d: entering stride %lu\n", id, stride);
-
 		u64
 			sqr = stride * stride, next = (stride + 1) * (stride + 1),
 			even = sqr + (stride & 1),
@@ -64,7 +60,7 @@ void * worker(void *args_v) {
 // 			fprintf(stderr, "thread %d: checking %lu @ %lu against %lu, g %lu\n", id, (what_), (where_), hwm, *hwm_p);
 	#	define TRY_RESULT(where_, what_) do {                \
 			if ((what_) > hwm && (what_) > *hwm_p) {                               \
-				fprintf(stderr, "thread %d: stride %lu found %lu (against global %lu) @ %lu\n", id, stride, (what_), *hwm_p, (where_)); \
+				fprintf(stderr, "thread %2d: stride %lu found %lu (against global %lu) @ %lu\n", id, stride, (what_), *hwm_p, (where_)); \
 			\
 				hwm = (what_);                                   \
 	                                                       \
@@ -89,16 +85,17 @@ void * worker(void *args_v) {
 
 	#	undef TRY_RESULT
 
-		for (size_t i = 0; i < len; ++i)
-			fprintf(stderr, "thread %d: [%zu] = %lu, %lu\n", id, i, hwms[i], wheres[i]);
+		if (len == 0) fprintf(stderr, "\e[F");
+		fprintf(stderr, "thread %2d: setting chunk_results[%lu] (found %lu result", id, stride, len);
+		if (len != 1) putc('s', stderr);
+		fprintf(stderr, ")");
+		if (len == 0) fprintf(stderr, "\e[K\n"); else fprintf(stderr, "\n");
 
-		fprintf(stderr, "thread %d: setting chunk_results[%lu], hwms = %p, wheres = %p, len = %lu\n", id, stride, hwms, wheres, len);
 		(*chunk_results_p)[stride] = (chunk_result){ hwms, wheres, len };
-
-		pthread_mutex_unlock(ms_mutex_p);
-		pthread_cond_signal(ms_cond_p);
 	}
 }
+
+void * dummy(void *p) { return p; }
 
 void SEQP_NAME(
   u64 start, u64 end,
@@ -139,8 +136,7 @@ void SEQP_NAME(
 			.chunk_results_p = &chunk_results,
 			.hwm_p = &hwm, .lowest_stride_p = &lowest_stride,
 			.strides = strides,
-			.ls_mutex_p = &ls_mutex,
-			.ms_mutex_p = &ms_mutex, .ms_cond_p = &ms_cond
+			.ls_mutex_p = &ls_mutex
 		};
 		pthread_create(threads + i, NULL, worker, (void *)&args);
 	}
@@ -149,9 +145,14 @@ void SEQP_NAME(
 		fprintf(stderr, "waiting for stride %lu\n", stride);
 		// pthread_mutex_lock(&ms_mutex);
 
-		while (chunk_results[stride].hwms == NULL) ;
-			// fprintf(stderr, "chunk_results[%lu]. hwms = %p, wheres = %p, len = %lu\n", stride, chunk_results[stride].hwms, chunk_results[stride].wheres, chunk_results[stride].len);
+		for (
+			u64 ** volatile hwms_check;
+			*(hwms_check = &chunk_results[stride].hwms) == NULL;
+//			fprintf(stderr, "[%lu]: hwms_check = %p\n", stride, *hwms_check)
+		) {
+			// fprintf(stderr, "chunk_results[%lu]. hwms = %p, wheres = %p, len = %lu vs. hwms_check = %p\n", stride, chunk_results[stride].hwms, chunk_results[stride].wheres, chunk_results[stride].len, hwms_check);
 			// pthread_cond_wait(&ms_cond, &ms_mutex);
+		}
 
 		chunk_result result = chunk_results[stride];
 		u64 *hwms = result.hwms, *wheres = result.wheres;
