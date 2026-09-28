@@ -8,12 +8,17 @@
 	} chunk_result;
 
 	typedef struct {
-		int id;
 		memo_read_callback memo_read; memo_write_callback memo_write;
 		chunk_result **chunk_results_p;
 		u64 * volatile hwm_p, *lowest_stride_p;
 		u64 strides;
 		pthread_mutex_t *ls_mutex_p; // lowest stride lock
+		u64 *firsts;
+	} state;
+
+	typedef struct {
+		int id;
+		const state state;
 	} worker_args;
 
 #	define NUM_THREADS 16
@@ -26,11 +31,15 @@ void * worker(void *args_v) {
 	worker_args args = *(worker_args *)args_v;
 
 	int id = args.id;
-	memo_read_callback memo_read = args.memo_read; memo_write_callback memo_write = args.memo_write;
-	chunk_result **chunk_results_p = args.chunk_results_p;
-	u64 * volatile hwm_p = args.hwm_p, * volatile lowest_stride_p = args.lowest_stride_p;
-	u64 strides = args.strides;
-	pthread_mutex_t *ls_mutex_p = args.ls_mutex_p;
+	state state = args.state;
+
+	memo_read_callback memo_read = state.memo_read; memo_write_callback memo_write = state.memo_write;
+	chunk_result **chunk_results_p = state.chunk_results_p;
+	u64 * volatile hwm_p = state.hwm_p, * volatile lowest_stride_p = state.lowest_stride_p;
+	u64 strides = state.strides;
+	pthread_mutex_t *ls_mutex_p = state.ls_mutex_p;
+
+	u64 *firsts = state.firsts;
 
 	u64 hwm = *hwm_p;
 
@@ -59,6 +68,9 @@ void * worker(void *args_v) {
 
 // 			fprintf(stderr, "thread %d: checking %lu @ %lu against %lu, g %lu\n", id, (what_), (where_), hwm, *hwm_p);
 	#	define TRY_RESULT(where_, what_) do {                \
+			if (firsts[(what_)] == 0) \
+				firsts[(what_)] = where_; \
+\
 			if ((what_) > hwm && (what_) > *hwm_p) {                               \
 				fprintf(stderr, "thread %2d: stride %lu found %lu (against global %lu) @ %lu\n", id, stride, (what_), *hwm_p, (where_)); \
 			\
@@ -73,9 +85,11 @@ void * worker(void *args_v) {
 			}                                                   \
 		} while (0)
 
-		r = oneshot_2_memo(even, memo_read);
-		if (memo_write) memo_write(even, r);
-		TRY_RESULT(even, r);
+		if (even < lower) {
+			r = oneshot_2_memo(even, memo_read);
+			if (memo_write) memo_write(even, r);
+			TRY_RESULT(even, r);
+		}
 
 		for (u64 i = lower; i <= upper; i += 2) {
 			r = oneshot_2_memo(i, memo_read);
@@ -83,19 +97,23 @@ void * worker(void *args_v) {
 			TRY_RESULT(i, r);
 		}
 
+		if (even > lower) {
+			r = oneshot_2_memo(even, memo_read);
+			if (memo_write) memo_write(even, r);
+			TRY_RESULT(even, r);
+		}
+
 	#	undef TRY_RESULT
 
-		if (len == 0) fprintf(stderr, "\e[F");
+// 		if (len == 0) fprintf(stderr, "\e[F");
 		fprintf(stderr, "thread %2d: setting chunk_results[%lu] (found %lu result", id, stride, len);
 		if (len != 1) putc('s', stderr);
 		fprintf(stderr, ")");
-		if (len == 0) fprintf(stderr, "\e[K\n"); else fprintf(stderr, "\n");
+/*		if (len == 0) fprintf(stderr, "\e[K\n"); else */ fprintf(stderr, "\n");
 
 		(*chunk_results_p)[stride] = (chunk_result){ hwms, wheres, len };
 	}
 }
-
-void * dummy(void *p) { return p; }
 
 void SEQP_NAME(
   u64 start, u64 end,
@@ -111,11 +129,11 @@ void SEQP_NAME(
 	pthread_mutex_init(&ms_mutex, NULL);
 	pthread_cond_init(&ms_cond, NULL);
 
-	fprintf(stderr, "new 1\n");
 	fprintf(stderr, "sequence_2_p with %lu, %lu, %p, %p, %p\n", start, end, memo_read, memo_write, found_hwm);
 
   u64 hwm = 6; u64 hwm_index = 2; // ghwm = &hwm
   lowest_stride = 3; pthread_mutex_init(&ls_mutex, NULL);
+	u64 *firsts = calloc(1000, sizeof(*firsts)), *firsts_p = firsts + 4;
 
   // strides is always a high estimate
   // worst case scenario more values are computed than what was asked for
@@ -124,20 +142,22 @@ void SEQP_NAME(
 	pthread_t threads[NUM_THREADS];
 	chunk_results = calloc(strides + 1, sizeof(*chunk_results));
 
+	const state state = {
+		.memo_read = memo_read, .memo_write = memo_write,
+		.chunk_results_p = &chunk_results,
+		.hwm_p = &hwm, .lowest_stride_p = &lowest_stride,
+		.strides = strides,
+		.ls_mutex_p = &ls_mutex,
+		.firsts = firsts
+	};
+
   if (found_hwm) found_hwm(1, 1, 2);
   if (found_hwm) found_hwm(2, 6, 3);
 
 	printf("hwm = %lu, &hwm = %p\n", hwm, &hwm);
 
 	for (int i = 0; i < NUM_THREADS; ++i) {
-		worker_args args = {
-			.id = i,
-			.memo_read = memo_read, .memo_write = memo_write,
-			.chunk_results_p = &chunk_results,
-			.hwm_p = &hwm, .lowest_stride_p = &lowest_stride,
-			.strides = strides,
-			.ls_mutex_p = &ls_mutex
-		};
+		worker_args args = { .id = i, .state = state };
 		pthread_create(threads + i, NULL, worker, (void *)&args);
 	}
 
@@ -152,6 +172,9 @@ void SEQP_NAME(
 		) {
 			// fprintf(stderr, "chunk_results[%lu]. hwms = %p, wheres = %p, len = %lu vs. hwms_check = %p\n", stride, chunk_results[stride].hwms, chunk_results[stride].wheres, chunk_results[stride].len, hwms_check);
 			// pthread_cond_wait(&ms_cond, &ms_mutex);
+
+			for (u64 c; c = *firsts_p; ++firsts_p)
+				djsp_message("F(%lu) = %lu\n", firsts_p - firsts, c);
 		}
 
 		chunk_result result = chunk_results[stride];
